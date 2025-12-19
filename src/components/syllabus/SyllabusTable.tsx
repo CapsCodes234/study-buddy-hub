@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Bullet, Subject, BulletFilters, Status } from '@/types';
 import { SyllabusFilters } from './SyllabusFilters';
 import { BulletRow } from './BulletRow';
