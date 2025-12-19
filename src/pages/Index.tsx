@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAppState } from '@/hooks/useAppState';
 import { Navigation, Tab } from '@/components/layout/Navigation';
 import { OnboardingModal } from '@/components/layout/OnboardingModal';
@@ -6,9 +6,23 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SyllabusTable } from '@/components/syllabus/SyllabusTable';
 import { PastPapers } from '@/components/papers/PastPapers';
 import { Settings } from '@/components/settings/Settings';
+import { NavigationFilters, BulletFilters, PaperFilters } from '@/types';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [bulletFilters, setBulletFilters] = useState<BulletFilters>({
+    subjectId: null,
+    searchText: '',
+    statusFilter: 'all',
+    hideCompleted: false,
+  });
+  const [paperFilters, setPaperFilters] = useState<PaperFilters>({
+    subjectId: null,
+    year: null,
+    completionFilter: 'all',
+  });
+  const [highlightId, setHighlightId] = useState<string | undefined>();
+  
   const {
     state,
     isLoading,
@@ -24,6 +38,37 @@ const Index = () => {
     importState,
     clearAllData,
   } = useAppState();
+
+  // Handle deep navigation from dashboard
+  const handleNavigate = useCallback((filters: NavigationFilters) => {
+    setActiveTab(filters.tab);
+    
+    if (filters.bulletFilters) {
+      setBulletFilters(filters.bulletFilters);
+    }
+    
+    if (filters.paperFilters) {
+      setPaperFilters(filters.paperFilters);
+    }
+    
+    if (filters.highlightId) {
+      setHighlightId(filters.highlightId);
+      // Clear highlight after a delay
+      setTimeout(() => setHighlightId(undefined), 3000);
+    }
+  }, []);
+
+  // Clear highlight when changing tabs
+  useEffect(() => {
+    if (highlightId) {
+      // Scroll to highlighted element
+      const element = document.getElementById(`bullet-${highlightId}`) || 
+                      document.getElementById(`paper-${highlightId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [highlightId, activeTab]);
 
   const handleOnboardingComplete = () => {
     updateSettings({ hasCompletedOnboarding: true });
@@ -47,6 +92,7 @@ const Index = () => {
             subjects={state.subjects}
             bullets={state.bullets}
             pastPapers={state.pastPapers}
+            onNavigate={handleNavigate}
           />
         )}
 
@@ -55,6 +101,8 @@ const Index = () => {
             bullets={state.bullets}
             subjects={state.subjects}
             aiEnabled={state.settings.aiExtractionEnabled}
+            initialFilters={bulletFilters}
+            highlightId={highlightId}
             onUpdateBullet={updateBullet}
             onDeleteBullet={deleteBullet}
             onBulkUpdate={bulkUpdateBullets}
@@ -67,6 +115,8 @@ const Index = () => {
             papers={state.pastPapers}
             subjects={state.subjects}
             bullets={state.bullets}
+            initialFilters={paperFilters}
+            highlightId={highlightId}
             onAddPaper={addPastPaper}
             onUpdatePaper={updatePastPaper}
             onDeletePaper={deletePastPaper}

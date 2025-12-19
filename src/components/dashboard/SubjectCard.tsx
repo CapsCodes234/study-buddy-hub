@@ -1,21 +1,60 @@
-import { Subject, SubjectProgress } from '@/types';
+import { memo } from 'react';
+import { Subject, SubjectProgress, NavigationFilters } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { formatProgress } from '@/lib/progress';
-import { BookOpen, FileText, AlertCircle } from 'lucide-react';
+import { BookOpen, FileText, AlertCircle, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SubjectCardProps {
   subject: Subject;
   progress: SubjectProgress;
   className?: string;
+  style?: React.CSSProperties;
+  onNavigate: (filters: NavigationFilters) => void;
 }
 
-export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) => {
+export const SubjectCard = memo(({ subject, progress, className, style, onNavigate }: SubjectCardProps) => {
   const combinedProgress = (progress.syllabusProgress + progress.pastPaperProgress) / 2;
 
+  const handleRedClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onNavigate({
+      tab: 'syllabus',
+      bulletFilters: {
+        subjectId: subject.id,
+        searchText: '',
+        statusFilter: 'Red',
+        hideCompleted: false,
+      },
+    });
+  };
+
+  const handleSyllabusClick = () => {
+    onNavigate({
+      tab: 'syllabus',
+      bulletFilters: {
+        subjectId: subject.id,
+        searchText: '',
+        statusFilter: 'all',
+        hideCompleted: false,
+      },
+    });
+  };
+
+  const handlePapersClick = () => {
+    onNavigate({
+      tab: 'papers',
+      paperFilters: {
+        subjectId: subject.id,
+        year: null,
+        completionFilter: 'all',
+      },
+    });
+  };
+
   return (
-    <Card className={cn('glass-card overflow-hidden animate-fade-in', className)}>
+    <Card className={cn('glass-card overflow-hidden', className)} style={style}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <span
@@ -38,7 +77,10 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
 
         <div className="space-y-3">
           {/* Syllabus Progress */}
-          <div className="flex items-center gap-3">
+          <button
+            onClick={handleSyllabusClick}
+            className="w-full flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors group"
+          >
             <BookOpen className="h-4 w-4 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between text-sm mb-1">
@@ -47,7 +89,7 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-accent rounded-full transition-all duration-500 animate-progress-fill"
+                  className="h-full bg-accent rounded-full transition-all duration-500"
                   style={{ width: `${progress.syllabusProgress * 100}%` }}
                 />
               </div>
@@ -55,10 +97,14 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
                 {progress.completedBullets} / {progress.totalBullets} topics
               </p>
             </div>
-          </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
 
           {/* Past Papers Progress */}
-          <div className="flex items-center gap-3">
+          <button
+            onClick={handlePapersClick}
+            className="w-full flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted/50 transition-colors group"
+          >
             <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between text-sm mb-1">
@@ -67,7 +113,7 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-500 animate-progress-fill"
+                  className="h-full bg-primary rounded-full transition-all duration-500"
                   style={{ width: `${progress.pastPaperProgress * 100}%` }}
                 />
               </div>
@@ -75,15 +121,20 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
                 {progress.completedPapers} / {progress.totalPapers} papers
               </p>
             </div>
-          </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
         </div>
 
         {/* Red bullets preview */}
         {progress.redBullets.length > 0 && (
-          <div className="pt-3 border-t border-border">
+          <button
+            onClick={handleRedClick}
+            className="w-full pt-3 border-t border-border text-left hover:bg-status-red/5 -mx-2 px-2 pb-2 rounded-b-lg transition-colors group"
+          >
             <div className="flex items-center gap-2 text-sm text-status-red mb-2">
               <AlertCircle className="h-4 w-4" />
               <span className="font-medium">Needs attention</span>
+              <ChevronRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
             <ul className="space-y-1">
               {progress.redBullets.map(bullet => (
@@ -95,9 +146,11 @@ export const SubjectCard = ({ subject, progress, className }: SubjectCardProps) 
                 </li>
               ))}
             </ul>
-          </div>
+          </button>
         )}
       </CardContent>
     </Card>
   );
-};
+});
+
+SubjectCard.displayName = 'SubjectCard';

@@ -20,6 +20,10 @@ export interface Bullet {
   done: boolean;
   createdAt: string;
   updatedAt: string;
+  // AI-ready fields (future use)
+  aiConfidence?: number;
+  aiSuggestions?: string[];
+  linkedPaperIds?: string[];
 }
 
 export interface PastPaper {
@@ -34,6 +38,10 @@ export interface PastPaper {
   comment?: string;
   createdAt: string;
   updatedAt: string;
+  // AI-ready fields (future use)
+  linkedTopicIds?: string[];
+  aiAnalysis?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
 }
 
 // AI Extraction Schema (matches required JSON schema)
@@ -63,6 +71,9 @@ export interface AppState {
 export interface AppSettings {
   aiExtractionEnabled: boolean;
   hasCompletedOnboarding: boolean;
+  // AI-ready settings
+  aiProvider?: 'openai' | 'gemini' | 'local';
+  aiApiKeyConfigured?: boolean;
 }
 
 // Filter State
@@ -71,6 +82,14 @@ export interface BulletFilters {
   searchText: string;
   statusFilter: Status | 'all';
   hideCompleted: boolean;
+  sortBy?: 'status' | 'updated' | 'topic';
+  sortDirection?: 'asc' | 'desc';
+}
+
+export interface PaperFilters {
+  subjectId: string | null;
+  year: number | null;
+  completionFilter: 'all' | 'completed' | 'incomplete';
 }
 
 // Progress calculations
@@ -84,6 +103,7 @@ export interface SubjectProgress {
   totalPapers: number;
   completedPapers: number;
   redBullets: Bullet[];
+  amberBullets: Bullet[];
 }
 
 export interface OverallProgress {
@@ -93,4 +113,45 @@ export interface OverallProgress {
   totalCompletedBullets: number;
   totalPapers: number;
   totalCompletedPapers: number;
+}
+
+// Today's Focus items for dashboard
+export interface FocusItem {
+  id: string;
+  type: 'bullet' | 'paper';
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  subtitle: string;
+  subjectId: string;
+  reason: string;
+  data: Bullet | PastPaper;
+}
+
+// Navigation filter state for deep linking
+export interface NavigationFilters {
+  tab: 'dashboard' | 'syllabus' | 'papers' | 'settings';
+  bulletFilters?: BulletFilters;
+  paperFilters?: PaperFilters;
+  highlightId?: string;
+}
+
+// Grouped syllabus structure for collapsible view
+export interface GroupedSyllabus {
+  subjectId: string;
+  subjectName: string;
+  mainTopics: {
+    name: string;
+    subtopics: {
+      name: string;
+      bullets: Bullet[];
+    }[];
+  }[];
+}
+
+// AI Extension hooks (disabled by default)
+export interface AIHooks {
+  extractSyllabus?: (pdfContent: string) => Promise<ExtractedSyllabus>;
+  analyzePaper?: (paper: PastPaper) => Promise<string>;
+  suggestFocus?: (bullets: Bullet[], papers: PastPaper[]) => Promise<FocusItem[]>;
+  generateSummary?: (subject: Subject, bullets: Bullet[]) => Promise<string>;
 }

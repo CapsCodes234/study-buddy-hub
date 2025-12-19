@@ -61,6 +61,11 @@ export const calculateSubjectProgress = (
     .filter(b => b.status === 'Red' && !b.done)
     .slice(0, 3);
   
+  // Get Amber bullets for focus tracking
+  const amberBullets = subjectBullets
+    .filter(b => b.status === 'Amber' && !b.done)
+    .slice(0, 3);
+  
   return {
     subjectId: subject.id,
     subjectName: subject.name,
@@ -71,6 +76,7 @@ export const calculateSubjectProgress = (
     totalPapers,
     completedPapers,
     redBullets,
+    amberBullets,
   };
 };
 

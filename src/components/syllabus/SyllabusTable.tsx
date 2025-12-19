@@ -21,6 +21,8 @@ interface SyllabusTableProps {
   bullets: Bullet[];
   subjects: Subject[];
   aiEnabled: boolean;
+  initialFilters?: BulletFilters;
+  highlightId?: string;
   onUpdateBullet: (id: string, updates: Partial<Bullet>) => void;
   onDeleteBullet: (id: string) => void;
   onBulkUpdate: (ids: string[], updates: Partial<Bullet>) => void;
@@ -34,18 +36,27 @@ export const SyllabusTable = ({
   bullets,
   subjects,
   aiEnabled,
+  initialFilters,
+  highlightId,
   onUpdateBullet,
   onDeleteBullet,
   onBulkUpdate,
   onImport,
 }: SyllabusTableProps) => {
-  const [filters, setFilters] = useState<BulletFilters>({
+  const [filters, setFilters] = useState<BulletFilters>(initialFilters || {
     subjectId: null,
     searchText: '',
     statusFilter: 'all',
     hideCompleted: false,
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Update filters when initialFilters change (from navigation)
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+  }, [initialFilters]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
