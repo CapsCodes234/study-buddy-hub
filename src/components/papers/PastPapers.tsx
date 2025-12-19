@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { PastPaper, Subject } from '@/types';
+import { useState, useMemo, useEffect } from 'react';
+import { PastPaper, Subject, PaperFilters } from '@/types';
 import { PaperForm } from './PaperForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +37,8 @@ interface PastPapersProps {
   papers: PastPaper[];
   subjects: Subject[];
   bullets: import('@/types').Bullet[];
+  initialFilters?: PaperFilters;
+  highlightId?: string;
   onAddPaper: (paper: Omit<PastPaper, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdatePaper: (id: string, updates: Partial<PastPaper>) => void;
   onDeletePaper: (id: string) => void;
@@ -46,18 +48,42 @@ export const PastPapers = ({
   papers,
   subjects,
   bullets,
+  initialFilters,
+  highlightId,
   onAddPaper,
   onUpdatePaper,
   onDeletePaper,
 }: PastPapersProps) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingPaper, setEditingPaper] = useState<PastPaper | undefined>();
-  const [filterSubject, setFilterSubject] = useState<string>('all');
+  const [filterSubject, setFilterSubject] = useState<string>(initialFilters?.subjectId || 'all');
+  const [filterYear, setFilterYear] = useState<number | null>(initialFilters?.year || null);
+  const [filterCompletion, setFilterCompletion] = useState<'all' | 'completed' | 'incomplete'>(
+    initialFilters?.completionFilter || 'all'
+  );
   const { toast } = useToast();
+  
+  // Update filters when initialFilters change (from navigation)
+  useEffect(() => {
+    if (initialFilters) {
+      setFilterSubject(initialFilters.subjectId || 'all');
+      setFilterYear(initialFilters.year);
+      setFilterCompletion(initialFilters.completionFilter || 'all');
+    }
+  }, [initialFilters]);
 
   const filteredPapers = useMemo(() => {
     return papers.filter((paper) => {
       if (filterSubject !== 'all' && paper.subjectId !== filterSubject) {
+        return false;
+      }
+      if (filterYear !== null && paper.year !== filterYear) {
+        return false;
+      }
+      if (filterCompletion === 'completed' && !paper.completed) {
+        return false;
+      }
+      if (filterCompletion === 'incomplete' && paper.completed) {
         return false;
       }
       return true;
