@@ -1,20 +1,28 @@
-import { Subject, Bullet, PastPaper } from '@/types';
+import { memo, useMemo } from 'react';
+import { Subject, Bullet, PastPaper, NavigationFilters } from '@/types';
 import { SubjectCard } from './SubjectCard';
 import { OverallProgressCard } from './OverallProgressCard';
+import { TodaysFocus } from './TodaysFocus';
 import { calculateSubjectProgress, calculateOverallProgress } from '@/lib/progress';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, Sparkles } from 'lucide-react';
 
 interface DashboardProps {
   subjects: Subject[];
   bullets: Bullet[];
   pastPapers: PastPaper[];
+  onNavigate: (filters: NavigationFilters) => void;
 }
 
-export const Dashboard = ({ subjects, bullets, pastPapers }: DashboardProps) => {
-  const subjectProgresses = subjects.map(subject =>
-    calculateSubjectProgress(subject, bullets, pastPapers)
+export const Dashboard = memo(({ subjects, bullets, pastPapers, onNavigate }: DashboardProps) => {
+  const subjectProgresses = useMemo(() => 
+    subjects.map(subject => calculateSubjectProgress(subject, bullets, pastPapers)),
+    [subjects, bullets, pastPapers]
   );
-  const overallProgress = calculateOverallProgress(subjects, bullets, pastPapers);
+  
+  const overallProgress = useMemo(() => 
+    calculateOverallProgress(subjects, bullets, pastPapers),
+    [subjects, bullets, pastPapers]
+  );
 
   const hasAnyData = bullets.length > 0 || pastPapers.length > 0;
 
@@ -45,15 +53,27 @@ export const Dashboard = ({ subjects, bullets, pastPapers }: DashboardProps) => 
 
       {hasAnyData && (
         <>
+          {/* Today's Focus - Command Center */}
+          <TodaysFocus 
+            bullets={bullets}
+            pastPapers={pastPapers}
+            subjects={subjects}
+            onNavigate={onNavigate}
+          />
+          
+          {/* Overall Progress */}
           <OverallProgressCard progress={overallProgress} />
 
+          {/* Subject Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {subjects.map((subject, index) => (
               <SubjectCard
                 key={subject.id}
                 subject={subject}
                 progress={subjectProgresses[index]}
+                onNavigate={onNavigate}
                 className="animate-fade-in"
+                style={{ animationDelay: `${index * 50}ms` }}
               />
             ))}
           </div>
@@ -61,4 +81,6 @@ export const Dashboard = ({ subjects, bullets, pastPapers }: DashboardProps) => 
       )}
     </div>
   );
-};
+});
+
+Dashboard.displayName = 'Dashboard';
