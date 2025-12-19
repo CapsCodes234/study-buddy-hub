@@ -92,7 +92,13 @@ export const PastPapers = ({
       if (b.year !== a.year) return b.year - a.year;
       return a.session.localeCompare(b.session);
     });
-  }, [papers, filterSubject]);
+  }, [papers, filterSubject, filterYear, filterCompletion]);
+  
+  // Get unique years for filter dropdown
+  const availableYears = useMemo(() => {
+    const years = [...new Set(papers.map(p => p.year))].sort((a, b) => b - a);
+    return years;
+  }, [papers]);
 
   const subjectStats = useMemo(() => {
     return subjects.map((subject) => {
@@ -188,10 +194,10 @@ export const PastPapers = ({
         ))}
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-4">
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
         <Select value={filterSubject} onValueChange={setFilterSubject}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-44">
             <SelectValue placeholder="Filter by subject" />
           </SelectTrigger>
           <SelectContent>
@@ -209,6 +215,48 @@ export const PastPapers = ({
             ))}
           </SelectContent>
         </Select>
+        
+        <Select 
+          value={filterYear?.toString() || 'all'} 
+          onValueChange={(v) => setFilterYear(v === 'all' ? null : parseInt(v))}
+        >
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Year" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Years</SelectItem>
+            {availableYears.map((year) => (
+              <SelectItem key={year} value={year.toString()}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <Select value={filterCompletion} onValueChange={(v: 'all' | 'completed' | 'incomplete') => setFilterCompletion(v)}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="incomplete">Incomplete</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        {(filterSubject !== 'all' || filterYear !== null || filterCompletion !== 'all') && (
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => {
+              setFilterSubject('all');
+              setFilterYear(null);
+              setFilterCompletion('all');
+            }}
+          >
+            Clear filters
+          </Button>
+        )}
       </div>
 
       {/* Papers table */}
@@ -248,7 +296,8 @@ export const PastPapers = ({
                 return (
                   <TableRow
                     key={paper.id}
-                    className={paper.completed ? 'bg-status-green-bg/30' : ''}
+                    id={`paper-${paper.id}`}
+                    className={`${paper.completed ? 'bg-status-green-bg/30' : ''} ${highlightId === paper.id ? 'ring-2 ring-primary/50 bg-primary/5' : ''}`}
                   >
                     <TableCell>
                       <Checkbox

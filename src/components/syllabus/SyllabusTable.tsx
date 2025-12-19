@@ -4,7 +4,9 @@ import { SyllabusFilters } from './SyllabusFilters';
 import { BulletRow } from './BulletRow';
 import { BulkActions } from './BulkActions';
 import { ImportDialog } from './ImportDialog';
+import { CollapsibleSyllabus } from './CollapsibleSyllabus';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -13,9 +15,17 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { exportBulletsAsCSV } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Upload, BookOpen, ArrowUpDown } from 'lucide-react';
+import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
+import { Download, Upload, BookOpen, ArrowUpDown, LayoutList, FolderTree, Keyboard } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface SyllabusTableProps {
   bullets: Bullet[];
@@ -57,11 +67,35 @@ export const SyllabusTable = ({
       setFilters(initialFilters);
     }
   }, [initialFilters]);
+  
+  const [viewMode, setViewMode] = useState<'table' | 'grouped'>('table');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>('status');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [focusedBulletId, setFocusedBulletId] = useState<string | null>(null);
   const { toast } = useToast();
-
+  
+  // Keyboard shortcuts for quick status changes
+  const handleQuickStatus = useCallback((id: string, status: Status) => {
+    onUpdateBullet(id, { status });
+  }, [onUpdateBullet]);
+  
+  useKeyboardShortcuts({
+    enabled: viewMode === 'grouped' && focusedBulletId !== null,
+    onStatusChange: (status) => {
+      if (focusedBulletId) {
+        handleQuickStatus(focusedBulletId, status);
+      }
+    },
+    onToggleDone: () => {
+      if (focusedBulletId) {
+        const bullet = bullets.find(b => b.id === focusedBulletId);
+        if (bullet) {
+          onUpdateBullet(focusedBulletId, { done: !bullet.done });
+        }
+      }
+    },
+  });
   // Filter bullets
   const filteredBullets = useMemo(() => {
     return bullets.filter((bullet) => {
@@ -196,6 +230,41 @@ export const SyllabusTable = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {/* View mode toggle */}
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'table' | 'grouped')}>
+            <TabsList className="h-8">
+              <TabsTrigger value="table" className="h-7 px-2">
+                <LayoutList className="h-4 w-4" />
+              </TabsTrigger>
+              <TabsTrigger value="grouped" className="h-7 px-2">
+                <FolderTree className="h-4 w-4" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {/* Keyboard shortcuts hint */}
+          {viewMode === 'grouped' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="gap-1 cursor-help">
+                    <Keyboard className="h-3 w-3" />
+                    Shortcuts
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="space-y-1 text-xs">
+                    {KEYBOARD_SHORTCUTS.map((s) => (
+                      <div key={s.key} className="flex justify-between gap-4">
+                        <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">{s.key}</kbd>
+                        <span>{s.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Button variant="outline" size="sm" onClick={() => handleExport(false)}>
             <Download className="h-4 w-4 mr-1" />
             Export
@@ -213,13 +282,28 @@ export const SyllabusTable = ({
         onFiltersChange={setFilters}
       />
 
-      <BulkActions
-        selectedCount={selectedIds.size}
-        onBulkStatusChange={handleBulkStatusChange}
-        onExportSelected={() => handleExport(true)}
-      />
+      {viewMode === 'table' && (
+        <BulkActions
+          selectedCount={selectedIds.size}
+          onBulkStatusChange={handleBulkStatusChange}
+          onExportSelected={() => handleExport(true)}
+        />
+      )}
 
-      {sortedBullets.length === 0 ? (
+      {/* Grouped/Collapsible View */}
+      {viewMode === 'grouped' && filteredBullets.length > 0 && (
+        <CollapsibleSyllabus
+          bullets={filteredBullets}
+          subjects={subjects}
+          highlightId={highlightId}
+          onUpdateBullet={onUpdateBullet}
+          onDeleteBullet={onDeleteBullet}
+          onQuickStatus={handleQuickStatus}
+        />
+      )}
+
+      {/* Table View */}
+      {viewMode === 'table' && sortedBullets.length === 0 ? (
         <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
           <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
           <p className="text-muted-foreground mb-4">
@@ -234,7 +318,7 @@ export const SyllabusTable = ({
             </Button>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'table' && sortedBullets.length > 0 ? (
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -287,6 +371,24 @@ export const SyllabusTable = ({
               </TableBody>
             </Table>
           </div>
+        </div>
+      ) : null}
+
+      {/* Empty state for grouped view */}
+      {viewMode === 'grouped' && filteredBullets.length === 0 && (
+        <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
+          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground mb-4">
+            {bullets.length === 0
+              ? 'No syllabus data yet. Import a CSV or enable AI extraction.'
+              : 'No items match your current filters.'}
+          </p>
+          {bullets.length === 0 && (
+            <Button onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Data
+            </Button>
+          )}
         </div>
       )}
 
