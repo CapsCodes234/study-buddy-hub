@@ -1,0 +1,291 @@
+import { useState, useMemo, useCallback } from 'react';
+import { Bullet, Subject, BulletFilters, Status } from '@/types';
+import { SyllabusFilters } from './SyllabusFilters';
+import { BulletRow } from './BulletRow';
+import { BulkActions } from './BulkActions';
+import { ImportDialog } from './ImportDialog';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { exportBulletsAsCSV } from '@/lib/storage';
+import { useToast } from '@/hooks/use-toast';
+import { Download, Upload, BookOpen, ArrowUpDown } from 'lucide-react';
+
+interface SyllabusTableProps {
+  bullets: Bullet[];
+  subjects: Subject[];
+  aiEnabled: boolean;
+  onUpdateBullet: (id: string, updates: Partial<Bullet>) => void;
+  onDeleteBullet: (id: string) => void;
+  onBulkUpdate: (ids: string[], updates: Partial<Bullet>) => void;
+  onImport: (bullets: Omit<Bullet, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
+}
+
+type SortField = 'subject' | 'status' | 'mainTopic';
+type SortDirection = 'asc' | 'desc';
+
+export const SyllabusTable = ({
+  bullets,
+  subjects,
+  aiEnabled,
+  onUpdateBullet,
+  onDeleteBullet,
+  onBulkUpdate,
+  onImport,
+}: SyllabusTableProps) => {
+  const [filters, setFilters] = useState<BulletFilters>({
+    subjectId: null,
+    searchText: '',
+    statusFilter: 'all',
+    hideCompleted: false,
+  });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('status');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const { toast } = useToast();
+
+  // Filter bullets
+  const filteredBullets = useMemo(() => {
+    return bullets.filter((bullet) => {
+      // Subject filter
+      if (filters.subjectId && bullet.subjectId !== filters.subjectId) {
+        return false;
+      }
+
+      // Status filter
+      if (filters.statusFilter !== 'all') {
+        if (bullet.status !== filters.statusFilter) {
+          return false;
+        }
+      }
+
+      // Hide completed
+      if (filters.hideCompleted && bullet.done) {
+        return false;
+      }
+
+      // Search text
+      if (filters.searchText) {
+        const search = filters.searchText.toLowerCase();
+        const searchableText = `${bullet.mainTopic} ${bullet.subtopic} ${bullet.bulletText}`.toLowerCase();
+        if (!searchableText.includes(search)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [bullets, filters]);
+
+  // Sort bullets (Red first by default)
+  const sortedBullets = useMemo(() => {
+    const statusOrder = { Red: 0, Amber: 1, Green: 2, null: 3 };
+    
+    return [...filteredBullets].sort((a, b) => {
+      if (sortField === 'status') {
+        const aOrder = a.done ? 4 : statusOrder[a.status ?? 'null'];
+        const bOrder = b.done ? 4 : statusOrder[b.status ?? 'null'];
+        return sortDirection === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+      }
+      
+      if (sortField === 'subject') {
+        const aSubject = subjects.find(s => s.id === a.subjectId)?.name || '';
+        const bSubject = subjects.find(s => s.id === b.subjectId)?.name || '';
+        return sortDirection === 'asc'
+          ? aSubject.localeCompare(bSubject)
+          : bSubject.localeCompare(aSubject);
+      }
+      
+      if (sortField === 'mainTopic') {
+        return sortDirection === 'asc'
+          ? a.mainTopic.localeCompare(b.mainTopic)
+          : b.mainTopic.localeCompare(a.mainTopic);
+      }
+      
+      return 0;
+    });
+  }, [filteredBullets, sortField, sortDirection, subjects]);
+
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(sortedBullets.map(b => b.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }, [sortedBullets]);
+
+  const handleSelectOne = useCallback((id: string, selected: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkStatusChange = (status: Status) => {
+    onBulkUpdate(Array.from(selectedIds), { status });
+    setSelectedIds(new Set());
+    toast({
+      title: 'Updated',
+      description: `${selectedIds.size} items marked as ${status}`,
+    });
+  };
+
+  const handleExport = (onlySelected: boolean) => {
+    const bulletsToExport = onlySelected
+      ? bullets.filter(b => selectedIds.has(b.id))
+      : filteredBullets;
+    
+    const csv = exportBulletsAsCSV(bulletsToExport, subjects);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `syllabus-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'Exported',
+      description: `${bulletsToExport.length} items exported to CSV`,
+    });
+  };
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const allSelected = sortedBullets.length > 0 && selectedIds.size === sortedBullets.length;
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Syllabus Tracker</h2>
+          <span className="text-sm text-muted-foreground">
+            ({filteredBullets.length} of {bullets.length} items)
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => handleExport(false)}>
+            <Download className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+          <Button size="sm" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-1" />
+            Import
+          </Button>
+        </div>
+      </div>
+
+      <SyllabusFilters
+        filters={filters}
+        subjects={subjects}
+        onFiltersChange={setFilters}
+      />
+
+      <BulkActions
+        selectedCount={selectedIds.size}
+        onBulkStatusChange={handleBulkStatusChange}
+        onExportSelected={() => handleExport(true)}
+      />
+
+      {sortedBullets.length === 0 ? (
+        <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
+          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground mb-4">
+            {bullets.length === 0
+              ? 'No syllabus data yet. Import a CSV or enable AI extraction.'
+              : 'No items match your current filters.'}
+          </p>
+          {bullets.length === 0 && (
+            <Button onClick={() => setImportDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import Data
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/50 sticky top-0">
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('subject')}>
+                    <span className="flex items-center gap-1">
+                      Subject
+                      <ArrowUpDown className="h-3 w-3" />
+                    </span>
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('mainTopic')}>
+                    <span className="flex items-center gap-1">
+                      Main Topic
+                      <ArrowUpDown className="h-3 w-3" />
+                    </span>
+                  </TableHead>
+                  <TableHead>Subtopic</TableHead>
+                  <TableHead>Bullet</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
+                    <span className="flex items-center gap-1">
+                      Status
+                      <ArrowUpDown className="h-3 w-3" />
+                    </span>
+                  </TableHead>
+                  <TableHead>Comment</TableHead>
+                  <TableHead className="w-10 text-center">Done</TableHead>
+                  <TableHead className="w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedBullets.map((bullet) => (
+                  <BulletRow
+                    key={bullet.id}
+                    bullet={bullet}
+                    subject={subjects.find(s => s.id === bullet.subjectId)}
+                    isSelected={selectedIds.has(bullet.id)}
+                    onSelect={handleSelectOne}
+                    onUpdate={onUpdateBullet}
+                    onDelete={onDeleteBullet}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        subjects={subjects}
+        onImport={onImport}
+        aiEnabled={aiEnabled}
+      />
+    </div>
+  );
+};
