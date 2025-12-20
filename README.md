@@ -60,6 +60,46 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Theme Customization
+
+The app supports light, dark, and system themes with full accessibility features.
+
+### Changing Theme Tokens
+
+Theme colors are defined as HSL values in `src/index.css`. To add or modify a color:
+
+1. Add the HSL values (without `hsl()` wrapper) to both `:root` (light) and `.dark` sections:
+   ```css
+   :root {
+     --my-color: 220 80% 50%;
+   }
+   .dark {
+     --my-color: 220 70% 60%;
+   }
+   ```
+
+2. Add to `tailwind.config.ts` colors section:
+   ```ts
+   colors: {
+     'my-color': 'hsl(var(--my-color))',
+   }
+   ```
+
+3. Use in components: `className="bg-my-color text-my-color"`
+
+### Accessibility Features
+
+- **Reduced Motion**: Respects `prefers-reduced-motion` and can be toggled in Settings
+- **High Contrast**: Enhanced contrast mode available in Settings
+- **WCAG Compliance**: All colors meet AA contrast requirements (4.5:1 normal text, 3:1 large text)
+- **Focus States**: Visible focus indicators on all interactive elements
+
+### Storage Keys
+
+- `study-tracker:theme` - light/dark/system
+- `study-tracker:reduced-motion` - true/false  
+- `study-tracker:high-contrast` - true/false
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
