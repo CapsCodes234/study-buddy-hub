@@ -37,6 +37,7 @@ export const Settings = ({
   onClearData,
 }: SettingsProps) => {
   const { toast } = useToast();
+  const { theme, setTheme, reducedMotion, setReducedMotion, highContrast, setHighContrast } = useTheme();
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
@@ -98,6 +99,86 @@ export const Settings = ({
         <SettingsIcon className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold">Settings</h2>
       </div>
+
+      {/* Appearance & Accessibility Settings */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-accent" />
+            Appearance & Accessibility
+          </CardTitle>
+          <CardDescription>
+            Customize the look and feel of the app
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Theme Selection */}
+          <div>
+            <Label className="text-sm font-medium mb-3 block">Theme</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={theme === 'light' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTheme('light')}
+                className="justify-start gap-2"
+              >
+                <Sun className="h-4 w-4" />
+                Light
+              </Button>
+              <Button
+                variant={theme === 'dark' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTheme('dark')}
+                className="justify-start gap-2"
+              >
+                <Moon className="h-4 w-4" />
+                Dark
+              </Button>
+              <Button
+                variant={theme === 'system' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setTheme('system')}
+                className="justify-start gap-2"
+              >
+                <Monitor className="h-4 w-4" />
+                System
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Accessibility Toggles */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="reduced-motion">Reduced Motion</Label>
+                <p className="text-xs text-muted-foreground">
+                  Disable animations for accessibility or preference
+                </p>
+              </div>
+              <Switch
+                id="reduced-motion"
+                checked={reducedMotion}
+                onCheckedChange={setReducedMotion}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="high-contrast">High Contrast</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enhanced contrast for better visibility
+                </p>
+              </div>
+              <Switch
+                id="high-contrast"
+                checked={highContrast}
+                onCheckedChange={setHighContrast}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* AI Features Settings */}
       <Card className="glass-card">
