@@ -32,14 +32,23 @@ class OpenAIProvider implements AIProvider {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
     try {
+      const providerName = import.meta.env.VITE_AI_PROVIDER || 'openai';
+      // For OpenRouter, use HTTP-Referer header and optional X-Title header
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      };
+      
+      if (providerName === 'openrouter') {
+        headers['HTTP-Referer'] = window.location.origin;
+        headers['X-Title'] = 'Study Buddy Hub';
+      }
+
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
+        headers,
         body: JSON.stringify({
-          model: 'gpt-4o-mini', // Cost-effective model
+          model: providerName === 'openrouter' ? 'openai/gpt-4o-mini' : 'gpt-4o-mini',
           messages: [
             ...(opts.systemPrompt ? [{ role: 'system', content: opts.systemPrompt }] : []),
             { role: 'user', content: prompt },
@@ -180,10 +189,20 @@ export function createAIProvider(provider: 'openai' | 'mock' = 'mock', apiKey?: 
  */
 export function getAIProvider(): AIProvider | null {
   const apiKey = import.meta.env.VITE_AI_API_KEY;
-  const provider = (import.meta.env.VITE_AI_PROVIDER || 'mock') as 'openai' | 'mock';
+  const providerName = (import.meta.env.VITE_AI_PROVIDER || 'openai') as string;
+  const provider = providerName === 'mock' ? 'mock' : 'openai';
 
   if (!apiKey && provider === 'openai') {
     return null; // No API key configured
+  }
+
+  // Use OpenRouter URL if provider is openrouter, otherwise use OpenAI
+  const baseUrl = providerName === 'openrouter' 
+    ? 'https://openrouter.ai/api/v1'
+    : undefined;
+
+  if (provider === 'openai') {
+    return new OpenAIProvider(apiKey, baseUrl);
   }
 
   return createAIProvider(provider, apiKey);

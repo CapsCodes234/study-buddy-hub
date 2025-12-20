@@ -153,7 +153,9 @@ export const Settings = ({
             <div>
               <Label htmlFor="ai-enabled">Enable AI Extraction</Label>
               <p className="text-xs text-muted-foreground">
-                Requires API key configuration (see README)
+                {import.meta.env.VITE_AI_API_KEY
+                  ? 'API key detected - Ready to use'
+                  : 'Requires API key configuration (see README)'}
               </p>
             </div>
             <Switch
@@ -162,14 +164,16 @@ export const Settings = ({
               onCheckedChange={(checked) =>
                 onUpdateSettings({ aiExtractionEnabled: checked })
               }
+              disabled={!import.meta.env.VITE_AI_API_KEY}
             />
           </div>
           
-          <div className="p-3 bg-muted/50 rounded-lg flex gap-3">
-            <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground">
-              To enable AI extraction, set the <code className="font-mono bg-muted px-1 rounded">AI_API_KEY</code> environment variable. 
-              See the README for setup instructions.
+          <div className={`p-3 rounded-lg flex gap-3 ${import.meta.env.VITE_AI_API_KEY ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
+            <Info className={`h-4 w-4 shrink-0 mt-0.5 ${import.meta.env.VITE_AI_API_KEY ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+            <p className={`text-xs ${import.meta.env.VITE_AI_API_KEY ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}`}>
+              {import.meta.env.VITE_AI_API_KEY
+                ? `API key is configured (${import.meta.env.VITE_AI_PROVIDER || 'openai'}). You can enable AI extraction above.`
+                : 'To enable AI extraction, set the VITE_AI_API_KEY environment variable in .env.local. See the README for setup instructions.'}
             </p>
           </div>
         </CardContent>

@@ -158,3 +158,58 @@ Format as JSON:
 Be specific, actionable, and encouraging.`;
 }
 
+/**
+ * System prompt for Syllabus Extraction
+ */
+export const SYLLABUS_EXTRACTION_SYSTEM_PROMPT = `You are a syllabus parser that extracts structured syllabus information from educational documents.
+Your role is to:
+- Extract subject names, main topics, subtopics, and bullet points
+- Organize information hierarchically
+- Maintain accuracy and preserve the original structure
+- Ignore non-syllabus content (headers, footers, page numbers, etc.)
+
+IMPORTANT:
+- Return ONLY valid JSON in the specified format
+- Do not include any explanatory text outside the JSON
+- Preserve the exact wording from the document when possible`;
+
+/**
+ * Generate prompt for Syllabus Extraction from PDF text
+ */
+export function generateSyllabusExtractionPrompt(pdfText: string, availableSubjects: string[]): string {
+  const subjectsList = availableSubjects.join(', ');
+  const truncatedText = pdfText.length > 12000 ? pdfText.substring(0, 12000) + '\n[... content truncated ...]' : pdfText;
+  
+  return 'Extract syllabus information from the following document text and organize it into a structured format.\n\n' +
+    'AVAILABLE SUBJECTS (match the subject name as closely as possible):\n' +
+    subjectsList + '\n\n' +
+    'DOCUMENT TEXT:\n' +
+    truncatedText + '\n\n' +
+    'Extract the syllabus content and organize it as follows:\n' +
+    '- Identify the subject (match to one of the available subjects above)\n' +
+    '- Extract main topics (major sections/chapters)\n' +
+    '- Extract subtopics under each main topic\n' +
+    '- Extract individual bullet points/learning objectives under each subtopic\n\n' +
+    'Return the result as a JSON object with this exact structure:\n' +
+    '{\n' +
+    '  "subject": "Subject Name",\n' +
+    '  "topics": [\n' +
+    '    {\n' +
+    '      "mainTopic": "Main Topic Name",\n' +
+    '      "subtopics": [\n' +
+    '        {\n' +
+    '          "name": "Subtopic Name",\n' +
+    '          "bullets": ["Bullet point 1", "Bullet point 2", ...]\n' +
+    '        }\n' +
+    '      ]\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n\n' +
+    'Important:\n' +
+    '- Only include actual syllabus content (topics, learning objectives, etc.)\n' +
+    '- Ignore headers, footers, page numbers, and administrative text\n' +
+    '- Group related content hierarchically\n' +
+    '- Ensure subject name matches one of the available subjects (case-insensitive)\n' +
+    '- Return ONLY the JSON object, no additional text';
+}
+

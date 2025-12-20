@@ -101,7 +101,7 @@ const Index = () => {
           <SyllabusTable
             bullets={state.bullets}
             subjects={state.subjects}
-            aiEnabled={state.settings.aiExtractionEnabled}
+            aiEnabled={!!import.meta.env.VITE_AI_API_KEY && state.settings.aiExtractionEnabled}
             initialFilters={bulletFilters}
             highlightId={highlightId}
             onUpdateBullet={updateBullet}
