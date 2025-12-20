@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { exportAsJSON, importFromJSON } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
+import { useTheme } from '@/components/ui/ThemeProvider';
 import {
   Settings as SettingsIcon,
   Download,
@@ -16,6 +17,10 @@ import {
   Wand2,
   Database,
   Info,
+  Sun,
+  Moon,
+  Monitor,
+  Palette,
 } from 'lucide-react';
 
 interface SettingsProps {

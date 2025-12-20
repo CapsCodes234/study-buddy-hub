@@ -40,7 +40,7 @@ export const useKeyboardShortcuts = ({
       (activeElement.tagName === 'INPUT' ||
        activeElement.tagName === 'TEXTAREA' ||
        activeElement.getAttribute('contenteditable') === 'true' ||
-       activeElement.isContentEditable)
+       (activeElement as HTMLElement).isContentEditable)
     ) {
       return;
     }

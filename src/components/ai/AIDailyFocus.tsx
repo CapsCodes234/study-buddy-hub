@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, Target, AlertCircle } from 'lucide-react';
-import { AIDailyFocus, AIError } from '@/ai/types';
+import { AIDailyFocus as AIDailyFocusType, AIError } from '@/ai/types';
 import { generateDailyFocus, prepareDataSnapshot } from '@/ai/summarizer';
 import { useToast } from '@/hooks/use-toast';
 import { Subject, Bullet, PastPaper } from '@/types';
@@ -15,13 +15,13 @@ interface AIDailyFocusProps {
   pastPapers: PastPaper[];
 }
 
-export const AIDailyFocus = ({
+export const AIDailyFocusCard = ({
   subjects,
   bullets,
   pastPapers,
 }: AIDailyFocusProps) => {
   const [loading, setLoading] = useState(false);
-  const [focus, setFocus] = useState<AIDailyFocus | null>(null);
+  const [focus, setFocus] = useState<AIDailyFocusType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
