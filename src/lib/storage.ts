@@ -25,6 +25,7 @@ export const DEFAULT_SUBJECTS: Subject[] = [
 
 const DEFAULT_SETTINGS: AppSettings = {
   aiExtractionEnabled: false,
+  aiFeaturesEnabled: false, // Disabled by default
   hasCompletedOnboarding: false,
 };
 
@@ -68,14 +69,66 @@ export const exportAsJSON = (state: AppState): string => {
   return JSON.stringify(state, null, 2);
 };
 
-// Import data from JSON
+// Validate AppState schema
+export const validateAppState = (data: unknown): data is AppState => {
+  if (!data || typeof data !== 'object') return false;
+  
+  const state = data as Record<string, unknown>;
+  
+  // Check required top-level keys
+  if (!state.subjects || !state.bullets || !state.pastPapers) {
+    return false;
+  }
+  
+  // Validate subjects array
+  if (!Array.isArray(state.subjects)) return false;
+  for (const subject of state.subjects) {
+    if (typeof subject !== 'object' || !subject) return false;
+    if (typeof (subject as Subject).id !== 'string') return false;
+    if (typeof (subject as Subject).name !== 'string') return false;
+    if (typeof (subject as Subject).color !== 'string') return false;
+  }
+  
+  // Validate bullets array
+  if (!Array.isArray(state.bullets)) return false;
+  for (const bullet of state.bullets) {
+    if (typeof bullet !== 'object' || !bullet) return false;
+    if (typeof (bullet as Bullet).id !== 'string') return false;
+    if (typeof (bullet as Bullet).subjectId !== 'string') return false;
+    if (typeof (bullet as Bullet).bulletText !== 'string') return false;
+  }
+  
+  // Validate pastPapers array
+  if (!Array.isArray(state.pastPapers)) return false;
+  for (const paper of state.pastPapers) {
+    if (typeof paper !== 'object' || !paper) return false;
+    if (typeof (paper as PastPaper).id !== 'string') return false;
+    if (typeof (paper as PastPaper).subjectId !== 'string') return false;
+    if (typeof (paper as PastPaper).year !== 'number') return false;
+  }
+  
+  // Settings is optional but if present should be an object
+  if (state.settings !== undefined && (typeof state.settings !== 'object' || !state.settings)) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Import data from JSON with schema validation
 export const importFromJSON = (jsonString: string): AppState | null => {
   try {
     const parsed = JSON.parse(jsonString);
-    if (parsed.subjects && parsed.bullets && parsed.pastPapers) {
-      return parsed as AppState;
+    if (validateAppState(parsed)) {
+      // Merge with defaults to ensure all required fields exist
+      return {
+        subjects: parsed.subjects || DEFAULT_SUBJECTS,
+        bullets: parsed.bullets || [],
+        pastPapers: parsed.pastPapers || [],
+        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+      };
     }
-    throw new Error('Invalid data structure');
+    throw new Error('Invalid data structure: missing required keys or invalid types');
   } catch (error) {
     console.error('Error importing JSON:', error);
     return null;

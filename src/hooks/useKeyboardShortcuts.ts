@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { Status } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 interface UseKeyboardShortcutsOptions {
   enabled?: boolean;
@@ -32,12 +33,14 @@ export const useKeyboardShortcuts = ({
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
     
-    // Don't trigger shortcuts when typing in inputs
-    const target = event.target as HTMLElement;
+    // Don't trigger shortcuts when typing in inputs or textareas
+    const activeElement = document.activeElement;
     if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.isContentEditable
+      activeElement &&
+      (activeElement.tagName === 'INPUT' ||
+       activeElement.tagName === 'TEXTAREA' ||
+       activeElement.getAttribute('contenteditable') === 'true' ||
+       activeElement.isContentEditable)
     ) {
       return;
     }
@@ -45,19 +48,47 @@ export const useKeyboardShortcuts = ({
     switch (event.key.toLowerCase()) {
       case 'r':
         event.preventDefault();
-        onStatusChange?.('Red');
+        if (onStatusChange) {
+          onStatusChange('Red');
+          toast({
+            title: 'Status changed',
+            description: 'Marked as Red',
+            duration: 2000,
+          });
+        }
         break;
       case 'a':
         event.preventDefault();
-        onStatusChange?.('Amber');
+        if (onStatusChange) {
+          onStatusChange('Amber');
+          toast({
+            title: 'Status changed',
+            description: 'Marked as Amber',
+            duration: 2000,
+          });
+        }
         break;
       case 'g':
         event.preventDefault();
-        onStatusChange?.('Green');
+        if (onStatusChange) {
+          onStatusChange('Green');
+          toast({
+            title: 'Status changed',
+            description: 'Marked as Green',
+            duration: 2000,
+          });
+        }
         break;
       case 'd':
         event.preventDefault();
-        onToggleDone?.();
+        if (onToggleDone) {
+          onToggleDone();
+          toast({
+            title: 'Done toggled',
+            description: 'Done status updated',
+            duration: 2000,
+          });
+        }
         break;
       case 'delete':
       case 'backspace':

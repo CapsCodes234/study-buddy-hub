@@ -20,6 +20,7 @@ import { exportBulletsAsCSV } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useKeyboardShortcuts, KEYBOARD_SHORTCUTS } from '@/hooks/useKeyboardShortcuts';
 import { Download, Upload, BookOpen, ArrowUpDown, LayoutList, FolderTree, Keyboard } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Tooltip,
   TooltipContent,
@@ -304,20 +305,23 @@ export const SyllabusTable = ({
 
       {/* Table View */}
       {viewMode === 'table' && sortedBullets.length === 0 ? (
-        <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
-          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground mb-4">
-            {bullets.length === 0
+        <EmptyState
+          icon={BookOpen}
+          title={bullets.length === 0 ? 'No Syllabus Data' : 'No Matching Items'}
+          description={
+            bullets.length === 0
               ? 'No syllabus data yet. Import a CSV or enable AI extraction.'
-              : 'No items match your current filters.'}
-          </p>
-          {bullets.length === 0 && (
-            <Button onClick={() => setImportDialogOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import Data
-            </Button>
-          )}
-        </div>
+              : 'No items match your current filters. Try adjusting your search or filter criteria.'
+          }
+          action={
+            bullets.length === 0
+              ? {
+                  label: 'Import Data',
+                  onClick: () => setImportDialogOpen(true),
+                }
+              : undefined
+          }
+        />
       ) : viewMode === 'table' && sortedBullets.length > 0 ? (
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -376,20 +380,23 @@ export const SyllabusTable = ({
 
       {/* Empty state for grouped view */}
       {viewMode === 'grouped' && filteredBullets.length === 0 && (
-        <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
-          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground mb-4">
-            {bullets.length === 0
+        <EmptyState
+          icon={BookOpen}
+          title={bullets.length === 0 ? 'No Syllabus Data' : 'No Matching Items'}
+          description={
+            bullets.length === 0
               ? 'No syllabus data yet. Import a CSV or enable AI extraction.'
-              : 'No items match your current filters.'}
-          </p>
-          {bullets.length === 0 && (
-            <Button onClick={() => setImportDialogOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Import Data
-            </Button>
-          )}
-        </div>
+              : 'No items match your current filters. Try adjusting your search or filter criteria.'
+          }
+          action={
+            bullets.length === 0
+              ? {
+                  label: 'Import Data',
+                  onClick: () => setImportDialogOpen(true),
+                }
+              : undefined
+          }
+        />
       )}
 
       <ImportDialog

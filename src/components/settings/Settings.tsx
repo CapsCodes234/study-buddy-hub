@@ -5,17 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { exportAsJSON, importFromJSON } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -42,22 +32,36 @@ export const Settings = ({
   onClearData,
 }: SettingsProps) => {
   const { toast } = useToast();
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   const handleExportBackup = () => {
     const json = exportAsJSON(state);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
     a.href = url;
-    a.download = `study-tracker-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `study-tracker-backup-${date}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: 'Backup exported', description: 'Your data has been saved to a file.' });
   };
 
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
+    // Reset input so same file can be selected again
+    e.target.value = '';
+    
+    setPendingImportFile(file);
+    setImportModalOpen(true);
+  };
+
+  const handleConfirmImport = () => {
+    if (!pendingImportFile) return;
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -67,10 +71,20 @@ export const Settings = ({
         onImportState(imported);
         toast({ title: 'Backup restored', description: 'Your data has been restored from the backup.' });
       } else {
-        toast({ title: 'Import failed', description: 'Invalid backup file.', variant: 'destructive' });
+        toast({ 
+          title: 'Import failed', 
+          description: 'Invalid backup file. Please ensure the file contains valid subjects, bullets, and pastPapers data.', 
+          variant: 'destructive' 
+        });
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(pendingImportFile);
+    setPendingImportFile(null);
+  };
+
+  const handleConfirmReset = () => {
+    onClearData();
+    toast({ title: 'Data cleared', description: 'All data has been deleted.' });
   };
 
   return (
@@ -79,6 +93,49 @@ export const Settings = ({
         <SettingsIcon className="h-5 w-5 text-primary" />
         <h2 className="text-xl font-semibold">Settings</h2>
       </div>
+
+      {/* AI Features Settings */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="h-5 w-5 text-accent" />
+            AI Intelligence Features
+          </CardTitle>
+          <CardDescription>
+            Enable AI-powered study insights and recommendations (optional, disabled by default)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="ai-features-enabled">Enable AI Features</Label>
+              <p className="text-xs text-muted-foreground">
+                Study summaries, daily focus recommendations, and insights
+              </p>
+            </div>
+            <Switch
+              id="ai-features-enabled"
+              checked={state.settings.aiFeaturesEnabled}
+              onCheckedChange={(checked) =>
+                onUpdateSettings({ aiFeaturesEnabled: checked })
+              }
+            />
+          </div>
+          
+          <div className="p-3 bg-muted/50 rounded-lg flex gap-3">
+            <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>
+                AI features are <strong>advisory only</strong> and never modify your data.
+              </p>
+              <p>
+                To use AI features, set <code className="font-mono bg-muted px-1 rounded">VITE_AI_API_KEY</code> in your environment.
+                See the README for setup instructions.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* AI Extraction Settings */}
       <Card className="glass-card">
@@ -141,7 +198,7 @@ export const Settings = ({
                 type="file"
                 id="import-backup"
                 accept=".json"
-                onChange={handleImportBackup}
+                onChange={handleImportFileSelect}
                 className="hidden"
               />
               <Button variant="outline" asChild>
@@ -162,35 +219,14 @@ export const Settings = ({
                 This will permanently delete all your syllabus and paper data
               </p>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Clear Data
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete all your
-                    syllabus progress and past paper records.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      onClearData();
-                      toast({ title: 'Data cleared', description: 'All data has been deleted.' });
-                    }}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete All Data
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => setResetModalOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear Data
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -242,6 +278,29 @@ export const Settings = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirmation Modals */}
+      <ConfirmationModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        title="Import Backup"
+        description="This will replace all your current data with the backup file. This action cannot be undone. Are you sure you want to continue?"
+        confirmLabel="Import"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmImport}
+      />
+
+      <ConfirmationModal
+        open={resetModalOpen}
+        onOpenChange={setResetModalOpen}
+        title="Clear All Data"
+        description="This action cannot be undone. This will permanently delete all your syllabus progress and past paper records."
+        confirmLabel="Delete All Data"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmReset}
+      />
     </div>
   );
 };

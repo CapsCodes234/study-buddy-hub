@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   Circle,
 } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface PastPapersProps {
   papers: PastPaper[];
@@ -261,20 +262,23 @@ export const PastPapers = ({
 
       {/* Papers table */}
       {filteredPapers.length === 0 ? (
-        <div className="text-center py-12 bg-muted/30 rounded-lg border border-dashed border-border">
-          <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground mb-4">
-            {papers.length === 0
-              ? 'No past papers logged yet. Start tracking your practice!'
-              : 'No papers match your current filter.'}
-          </p>
-          {papers.length === 0 && (
-            <Button onClick={() => setFormOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Paper
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={papers.length === 0 ? 'No Past Papers Logged' : 'No Matching Papers'}
+          description={
+            papers.length === 0
+              ? 'No past papers logged yet. Start tracking your practice to monitor your progress!'
+              : 'No papers match your current filter. Try adjusting your filter criteria.'
+          }
+          action={
+            papers.length === 0
+              ? {
+                  label: 'Add First Paper',
+                  onClick: () => setFormOpen(true),
+                }
+              : undefined
+          }
+        />
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <Table>

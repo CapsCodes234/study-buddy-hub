@@ -70,6 +70,7 @@ export interface AppState {
 
 export interface AppSettings {
   aiExtractionEnabled: boolean;
+  aiFeaturesEnabled: boolean; // AI intelligence features (study summary, daily focus)
   hasCompletedOnboarding: boolean;
   // AI-ready settings
   aiProvider?: 'openai' | 'gemini' | 'local';

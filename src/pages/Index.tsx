@@ -92,6 +92,7 @@ const Index = () => {
             subjects={state.subjects}
             bullets={state.bullets}
             pastPapers={state.pastPapers}
+            aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
             onNavigate={handleNavigate}
           />
         )}

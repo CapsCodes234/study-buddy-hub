@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Bullet, Subject } from '@/types';
 import { StatusSelect } from './StatusSelect';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,7 +17,7 @@ interface BulletRowProps {
   onDelete: (id: string) => void;
 }
 
-export const BulletRow = ({
+export const BulletRow = memo(({
   bullet,
   subject,
   isSelected,
@@ -120,4 +120,6 @@ export const BulletRow = ({
       </TableCell>
     </TableRow>
   );
-};
+});
+
+BulletRow.displayName = 'BulletRow';
