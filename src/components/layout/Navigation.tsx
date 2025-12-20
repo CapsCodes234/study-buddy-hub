@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { LayoutDashboard, BookOpen, FileText, Settings } from 'lucide-react';
 
 export type Tab = 'dashboard' | 'syllabus' | 'papers' | 'settings';
@@ -51,6 +52,9 @@ export const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
                 </Button>
               );
             })}
+            
+            {/* Theme Toggle */}
+            <ThemeToggle className="ml-2" />
           </div>
         </div>
       </div>

@@ -1,0 +1,169 @@
+/**
+ * Study Tracker Theme System
+ * 
+ * This file contains comprehensive CSS custom properties (design tokens)
+ * for the light and dark themes, plus high contrast and reduced motion variants.
+ * 
+ * USAGE:
+ * - Colors: Use hsl(var(--property-name)) in CSS or via Tailwind classes
+ * - Shadows: Use var(--shadow-*) directly
+ * - Spacing: Use standard Tailwind spacing or custom --spacing-* tokens
+ * 
+ * TO ADD A NEW COLOR TOKEN:
+ * 1. Add the HSL values (without "hsl()") to both :root and .dark sections
+ * 2. Add corresponding entry in tailwind.config.ts colors section
+ * 3. Use as: className="bg-my-color" or style={{ backgroundColor: 'hsl(var(--my-color))' }}
+ * 
+ * ACCESSIBILITY:
+ * - All text colors meet WCAG 2.1 AA contrast requirements (4.5:1 for normal, 3:1 for large)
+ * - Focus states use visible outlines with 3:1 contrast ratio
+ * - Status colors tested for common color blindness types
+ */
+
+/* ============================================================
+   THEME TRANSITIONS
+   ============================================================ */
+:root {
+  /* Smooth theme transitions - applies to background and text */
+  --theme-transition-duration: 200ms;
+  --theme-transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Apply smooth transitions when switching themes */
+html:not(.reduce-motion) {
+  transition: 
+    background-color var(--theme-transition-duration) var(--theme-transition-timing),
+    color var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+html:not(.reduce-motion) body,
+html:not(.reduce-motion) .glass-card,
+html:not(.reduce-motion) [class*="bg-"],
+html:not(.reduce-motion) [class*="text-"] {
+  transition: 
+    background-color var(--theme-transition-duration) var(--theme-transition-timing),
+    color var(--theme-transition-duration) var(--theme-transition-timing),
+    border-color var(--theme-transition-duration) var(--theme-transition-timing),
+    box-shadow var(--theme-transition-duration) var(--theme-transition-timing);
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+.reduce-motion,
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ============================================================
+   HIGH CONTRAST THEME
+   Provides enhanced contrast for users who need it
+   ============================================================ */
+.theme-high-contrast {
+  /* Light mode high contrast overrides */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 222 100% 20%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 85%;
+  --muted-foreground: 0 0% 25%;
+  --border: 0 0% 0%;
+  --input: 0 0% 0%;
+  --ring: 222 100% 20%;
+  
+  /* Status colors with maximum contrast */
+  --status-red: 0 100% 35%;
+  --status-red-bg: 0 100% 95%;
+  --status-amber: 30 100% 35%;
+  --status-amber-bg: 30 100% 95%;
+  --status-green: 120 100% 25%;
+  --status-green-bg: 120 100% 95%;
+  --status-done: 180 100% 25%;
+  --status-done-bg: 180 100% 95%;
+}
+
+.theme-high-contrast.dark {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 5%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 180 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 75%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 180 100% 50%;
+  
+  /* Status colors for dark high contrast */
+  --status-red: 0 100% 60%;
+  --status-red-bg: 0 100% 15%;
+  --status-amber: 45 100% 55%;
+  --status-amber-bg: 45 100% 15%;
+  --status-green: 120 100% 45%;
+  --status-green-bg: 120 100% 15%;
+  --status-done: 180 100% 50%;
+  --status-done-bg: 180 100% 15%;
+}
+
+/* ============================================================
+   FOCUS STATES
+   Ensures all interactive elements have visible focus indicators
+   ============================================================ */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Higher contrast focus for high contrast mode */
+.theme-high-contrast *:focus-visible {
+  outline-width: 3px;
+  outline-offset: 3px;
+}
+
+/* ============================================================
+   ACCESSIBILITY UTILITIES
+   ============================================================ */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 8px 16px;
+  z-index: 100;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  top: 0;
+}

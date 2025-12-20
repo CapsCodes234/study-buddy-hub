@@ -9,7 +9,7 @@ import { WeaknessConcentrationMap } from './WeaknessConcentrationMap';
 import { PastPaperPerformanceOverview } from './PastPaperPerformanceOverview';
 import { StudyMomentumIndicator } from './StudyMomentumIndicator';
 import { ExamSimulationCard } from './ExamSimulationCard';
-import { AIDailyFocus } from '@/components/ai/AIDailyFocus';
+import { AIDailyFocusCard } from '@/components/ai/AIDailyFocus';
 import { AIStudySummaryModal } from '@/components/ai/AIStudySummaryModal';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
@@ -178,7 +178,7 @@ export const Dashboard = memo(({ subjects, bullets, pastPapers, aiFeaturesEnable
 
           {/* AI Daily Focus Assistant */}
           {aiFeaturesEnabled && (
-            <AIDailyFocus
+            <AIDailyFocusCard
               subjects={subjects}
               bullets={bullets}
               pastPapers={pastPapers}
