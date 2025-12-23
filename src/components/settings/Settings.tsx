@@ -4,11 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { exportAsJSON, importFromJSON } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/ui/ThemeProvider';
+import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient';
+import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
+import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
 import {
   Settings as SettingsIcon,
   Download,
@@ -21,6 +32,10 @@ import {
   Moon,
   Monitor,
   Palette,
+  Bell,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -41,6 +56,39 @@ export const Settings = ({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [aiTestMessage, setAiTestMessage] = useState('');
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() => loadReminderSettings());
+
+  const handleTestAIConnection = async () => {
+    setAiTestStatus('testing');
+    setAiTestMessage('');
+    try {
+      const result = await testAIConnection();
+      if (result.success) {
+        setAiTestStatus('success');
+        const msg = result.isMock ? 'Mock provider active' : 'Connection successful';
+        setAiTestMessage(msg);
+        toast({ title: 'AI Connection Successful', description: msg });
+      } else {
+        setAiTestStatus('error');
+        const msg = result.error || 'Connection failed';
+        setAiTestMessage(msg);
+        toast({ title: 'AI Connection Failed', description: msg, variant: 'destructive' });
+      }
+    } catch (error) {
+      setAiTestStatus('error');
+      setAiTestMessage('Unexpected error testing connection');
+      toast({ title: 'Error', description: 'Failed to test AI connection', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateReminderSettings = (updates: Partial<ReminderSettings>) => {
+    const updated = { ...reminderSettings, ...updates };
+    setReminderSettings(updated);
+    saveReminderSettings(updated);
+    toast({ title: 'Reminder settings saved' });
+  };
 
   const handleExportBackup = () => {
     const json = exportAsJSON(state);
@@ -239,8 +287,8 @@ export const Settings = ({
             <div>
               <Label htmlFor="ai-enabled">Enable AI Extraction</Label>
               <p className="text-xs text-muted-foreground">
-                {import.meta.env.VITE_AI_API_KEY
-                  ? 'API key detected - Ready to use'
+                {isAIConfigured()
+                  ? `Ready to use (${getProviderName()})`
                   : 'Requires API key configuration (see README)'}
               </p>
             </div>
@@ -250,17 +298,154 @@ export const Settings = ({
               onCheckedChange={(checked) =>
                 onUpdateSettings({ aiExtractionEnabled: checked })
               }
-              disabled={!import.meta.env.VITE_AI_API_KEY}
             />
           </div>
-          
-          <div className={`p-3 rounded-lg flex gap-3 ${import.meta.env.VITE_AI_API_KEY ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
-            <Info className={`h-4 w-4 shrink-0 mt-0.5 ${import.meta.env.VITE_AI_API_KEY ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
-            <p className={`text-xs ${import.meta.env.VITE_AI_API_KEY ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}`}>
-              {import.meta.env.VITE_AI_API_KEY
-                ? `API key is configured (${import.meta.env.VITE_AI_PROVIDER || 'openai'}). You can enable AI extraction above.`
-                : 'To enable AI extraction, set the VITE_AI_API_KEY environment variable in .env.local. See the README for setup instructions.'}
+
+          {/* Provider Selection */}
+          <div className="space-y-1.5">
+            <Label>AI Provider</Label>
+            <Select
+              value={import.meta.env.VITE_AI_PROVIDER || 'openrouter'}
+              disabled
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="openrouter">OpenRouter (default)</SelectItem>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="mock">Mock (for development)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Set via VITE_AI_PROVIDER in .env.local
             </p>
+          </div>
+
+          {/* Test Connection Button */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestAIConnection}
+              disabled={aiTestStatus === 'testing'}
+            >
+              {aiTestStatus === 'testing' && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              {aiTestStatus === 'success' && <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" />}
+              {aiTestStatus === 'error' && <XCircle className="h-4 w-4 mr-1 text-destructive" />}
+              Test AI Connection
+            </Button>
+            {aiTestMessage && (
+              <span className={`text-xs ${aiTestStatus === 'success' ? 'text-green-600' : 'text-destructive'}`}>
+                {aiTestMessage}
+              </span>
+            )}
+          </div>
+          
+          <div className={`p-3 rounded-lg flex gap-3 ${isAIConfigured() ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
+            <Info className={`h-4 w-4 shrink-0 mt-0.5 ${isAIConfigured() ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+            <div className={`text-xs ${isAIConfigured() ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}`}>
+              {isAIConfigured() ? (
+                <p>API key is configured. You can enable AI extraction above.</p>
+              ) : (
+                <>
+                  <p className="mb-1">To enable AI extraction:</p>
+                  <ol className="list-decimal list-inside space-y-0.5">
+                    <li>Create <code className="bg-muted px-1 rounded">.env.local</code></li>
+                    <li>Add <code className="bg-muted px-1 rounded">VITE_AI_API_KEY=your_key</code></li>
+                    <li>Set <code className="bg-muted px-1 rounded">VITE_AI_PROVIDER=openrouter</code></li>
+                  </ol>
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Reminder Settings */}
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-primary" />
+            Reminder Settings
+          </CardTitle>
+          <CardDescription>
+            Configure default reminder intervals and exam notifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="reminders-enabled">Enable Reminders</Label>
+              <p className="text-xs text-muted-foreground">
+                Show in-app reminders for topics and exams
+              </p>
+            </div>
+            <Switch
+              id="reminders-enabled"
+              checked={reminderSettings.enabled}
+              onCheckedChange={(enabled) => handleUpdateReminderSettings({ enabled })}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-1.5">
+            <Label>Default "Remind Me Later" Interval</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                value={reminderSettings.defaultIntervalDays}
+                onChange={(e) =>
+                  handleUpdateReminderSettings({
+                    defaultIntervalDays: parseInt(e.target.value) || 3,
+                  })
+                }
+                className="w-20"
+                min={1}
+                max={30}
+              />
+              <span className="text-sm text-muted-foreground">days</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Main Exam Lead Days</Label>
+              <Input
+                value={reminderSettings.mainExamLeadDays.join(', ')}
+                onChange={(e) =>
+                  handleUpdateReminderSettings({
+                    mainExamLeadDays: e.target.value
+                      .split(',')
+                      .map((s) => parseInt(s.trim()))
+                      .filter((n) => !isNaN(n)),
+                  })
+                }
+                placeholder="7, 3, 1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Days before exam to remind (comma-separated)
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Mock Exam Lead Days</Label>
+              <Input
+                value={reminderSettings.mockExamLeadDays.join(', ')}
+                onChange={(e) =>
+                  handleUpdateReminderSettings({
+                    mockExamLeadDays: e.target.value
+                      .split(',')
+                      .map((s) => parseInt(s.trim()))
+                      .filter((n) => !isNaN(n)),
+                  })
+                }
+                placeholder="3, 1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Days before mock to remind (comma-separated)
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
