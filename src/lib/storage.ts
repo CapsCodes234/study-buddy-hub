@@ -42,8 +42,10 @@ export const loadData = (): AppState => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
+      const parsedSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : undefined;
+      const subjects = parsedSubjects && parsedSubjects.length > 0 ? parsedSubjects : DEFAULT_SUBJECTS;
       return {
-        subjects: parsed.subjects || DEFAULT_SUBJECTS,
+        subjects,
         bullets: parsed.bullets || [],
         pastPapers: parsed.pastPapers || [],
         settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
@@ -61,6 +63,32 @@ export const saveData = (state: AppState): void => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
     console.error('Error saving data to localStorage:', error);
+  }
+};
+
+export const clearAllAppData = async (): Promise<void> => {
+  try {
+    localStorage.clear();
+  } catch (error) {
+    console.error('Error clearing localStorage:', error);
+  }
+
+  try {
+    sessionStorage.clear();
+  } catch (error) {
+    console.error('Error clearing sessionStorage:', error);
+  }
+
+  try {
+    await deleteAllIndexedDBDatabases();
+  } catch (error) {
+    console.error('Error deleting IndexedDB databases:', error);
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getInitialState()));
+  } catch (error) {
+    console.error('Error writing empty state:', error);
   }
 };
 
@@ -174,38 +202,156 @@ export const exportPastPapersAsCSV = (papers: PastPaper[], subjects: Subject[]):
 
 // Import bullets from CSV
 export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bullet[] => {
-  const lines = csvString.split('\n').filter(line => line.trim());
+  const lines = csvString.split(/\r?\n/).filter(line => line.trim());
   if (lines.length < 2) return [];
 
   const bullets: Bullet[] = [];
-  
-  // Skip header row
+  const now = new Date().toISOString();
+
+  // Header-based parsing so externally-generated syllabus CSVs work.
+  // Mapping: `learning_outcome` (or app-exported `Bullet`) -> Bullet.bulletText
+  //          `main_topic` (or app-exported `Main Topic`) -> Bullet.mainTopic
+  //          `subtopic` (or app-exported `Subtopic`) -> Bullet.subtopic
+  const headerCells = parseCSVLine(lines[0]);
+  const headerIndex = buildHeaderIndex(headerCells);
+
+  let lockedSubject: Subject | undefined;
+  let lockedSubjectRaw = '';
+
   for (let i = 1; i < lines.length; i++) {
     const cells = parseCSVLine(lines[i]);
-    if (cells.length >= 4) {
-      const subjectName = cells[0];
-      const subject = subjects.find(s => 
-        s.name.toLowerCase() === subjectName.toLowerCase()
-      );
-      
-      if (subject) {
-        bullets.push({
-          id: `bullet-${Date.now()}-${i}`,
-          subjectId: subject.id,
-          mainTopic: cells[1] || '',
-          subtopic: cells[2] || '',
-          bulletText: cells[3] || '',
-          status: null,
-          comment: '',
-          done: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+    if (cells.length === 0) continue;
+
+    const outcomeText = getCellByHeader(cells, headerIndex, [
+      'learning_outcome',
+      'learning outcome',
+      'outcome',
+      'bullet',
+      'bulletpoint',
+      'bullet_point',
+    ]);
+
+    // If there's no learning_outcome text, this row does not represent a bullet point.
+    if (!outcomeText.trim()) continue;
+
+    const mainTopic = getCellByHeader(cells, headerIndex, ['main_topic', 'main topic', 'topic', 'maintopic']);
+    const subtopic = getCellByHeader(cells, headerIndex, ['subtopic', 'sub topic', 'sub_topic']);
+
+    // Subject resolution is import-scoped and locked:
+    // - If any row specifies a subject, we lock that subject for the entire import.
+    // - The import must never write to more than one subject.
+    const subjectNameOrId = getCellByHeader(cells, headerIndex, ['subject', 'subject_id', 'subjectid']);
+    if (subjectNameOrId.trim()) {
+      const resolved = resolveSubject(subjectNameOrId, subjects);
+      if (!resolved) {
+        throw new Error(`Unknown subject: "${subjectNameOrId}". Please create/select the subject first or fix the CSV subject column.`);
+      }
+      if (!lockedSubject) {
+        lockedSubject = resolved;
+        lockedSubjectRaw = subjectNameOrId;
+        bullets.forEach(b => {
+          if (!b.subjectId) b.subjectId = lockedSubject!.id;
         });
+      } else if (lockedSubject.id !== resolved.id) {
+        throw new Error(
+          `CSV contains multiple subjects (e.g. "${lockedSubjectRaw}" and "${subjectNameOrId}"). A single import must target exactly one subject.`,
+        );
       }
     }
+
+    bullets.push({
+      id: `bullet-${Date.now()}-${i}`,
+      subjectId: lockedSubject?.id || '',
+      mainTopic: mainTopic || '',
+      subtopic: subtopic || '',
+      bulletText: outcomeText,
+      status: null,
+      comment: '',
+      done: false,
+      createdAt: now,
+      updatedAt: now,
+    });
   }
-  
+
+  if (bullets.length > 0 && !lockedSubject) {
+    // If the CSV didn't specify a subject, we refuse to guess when multiple subjects exist.
+    if (subjects.length === 1) {
+      bullets.forEach(b => {
+        b.subjectId = subjects[0].id;
+      });
+    } else if (subjects.length === 0) {
+      throw new Error('No subjects exist to import into. Create a subject first or include a subject column in the CSV.');
+    } else {
+      throw new Error('CSV does not specify a subject. Please add a subject column or ensure only one subject exists before importing.');
+    }
+  }
+
   return bullets;
+};
+
+const normalizeHeader = (value: string): string => {
+  return value
+    .replace(/^"|"$/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+};
+
+const buildHeaderIndex = (headers: string[]): Record<string, number> => {
+  const index: Record<string, number> = {};
+  headers.forEach((h, i) => {
+    const normalized = normalizeHeader(h);
+    if (normalized) index[normalized] = i;
+  });
+  return index;
+};
+
+const getCellByHeader = (
+  cells: string[],
+  headerIndex: Record<string, number>,
+  possibleHeaders: string[],
+): string => {
+  for (const header of possibleHeaders) {
+    const idx = headerIndex[normalizeHeader(header)];
+    if (idx !== undefined && idx < cells.length) {
+      return (cells[idx] ?? '').trim();
+    }
+  }
+  return '';
+};
+
+const resolveSubject = (subjectValue: string, subjects: Subject[]): Subject | undefined => {
+  const v = subjectValue.trim();
+  if (!v) return undefined;
+  const byId = subjects.find(s => s.id.toLowerCase() === v.toLowerCase());
+  if (byId) return byId;
+  const byName = subjects.find(s => s.name.toLowerCase() === v.toLowerCase());
+  if (byName) return byName;
+  return undefined;
+};
+
+const deleteAllIndexedDBDatabases = async (): Promise<void> => {
+  if (typeof indexedDB === 'undefined') return;
+
+  const deleteDb = (name: string) =>
+    new Promise<void>((resolve, reject) => {
+      const req = indexedDB.deleteDatabase(name);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+      req.onblocked = () => resolve();
+    });
+
+  const anyIndexedDB = indexedDB as unknown as { databases?: () => Promise<Array<{ name?: string }>> };
+  if (typeof anyIndexedDB.databases === 'function') {
+    const dbs = await anyIndexedDB.databases();
+    await Promise.all(
+      (dbs || [])
+        .map(d => d.name)
+        .filter((n): n is string => Boolean(n))
+        .map(deleteDb),
+    );
+  }
 };
 
 // Helper to parse CSV line (handles quoted fields)

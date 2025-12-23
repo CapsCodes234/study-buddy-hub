@@ -206,9 +206,10 @@ export const ImportDialog = ({
       setCsvContent('');
       onOpenChange(false);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'There was an error parsing your CSV.';
       toast({
         title: 'Import failed',
-        description: 'There was an error parsing your CSV.',
+        description: message,
         variant: 'destructive',
       });
     } finally {

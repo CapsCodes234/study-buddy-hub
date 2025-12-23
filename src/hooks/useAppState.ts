@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AppState, Bullet, PastPaper, Status } from '@/types';
-import { loadData, saveData, generateId } from '@/lib/storage';
+import { loadData, saveData, generateId, clearAllAppData } from '@/lib/storage';
 
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => loadData());
@@ -129,7 +129,13 @@ export const useAppState = () => {
   }, []);
 
   const clearAllData = useCallback(() => {
-    setState(loadData());
+    // Nuclear wipe: clear all persistence layers and reload clean.
+    // We set loading to prevent any stale state from being saved during teardown.
+    setIsLoading(true);
+    void (async () => {
+      await clearAllAppData();
+      window.location.reload();
+    })();
   }, []);
 
   return {

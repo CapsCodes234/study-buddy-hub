@@ -3,10 +3,11 @@
  */
 
 import { ExtractionResult, ExtractionChangelog, SubjectComponent } from '@/types/syllabus';
-import { generateId } from '@/lib/storage';
+import { DEFAULT_SUBJECTS, generateId } from '@/lib/storage';
 
 const CHANGELOG_KEY = 'study-tracker-extraction-changelog';
 const COMPONENTS_KEY = 'study-tracker-subject-components';
+const APP_STATE_KEY = 'study-tracker-data';
 
 /**
  * Save extraction to changelog (before user edits)
@@ -93,11 +94,55 @@ export function saveSubjectComponents(components: SubjectComponent[]): void {
 export function loadSubjectComponents(): SubjectComponent[] {
   try {
     const stored = localStorage.getItem(COMPONENTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const parsed = stored ? JSON.parse(stored) : [];
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+
+    const seeded = seedDefaultComponents();
+    return seeded;
   } catch (error) {
     console.error('Error loading subject components:', error);
     return [];
   }
+}
+
+function seedDefaultComponents(): SubjectComponent[] {
+  const subjects = getStoredSubjects();
+  const components: SubjectComponent[] = [];
+
+  for (const subject of subjects) {
+    const defaults = getDefaultComponents(subject.name);
+    defaults.forEach((partial, index) => {
+      const orderNumber = partial.orderNumber ?? index + 1;
+      components.push({
+        id: `component-${subject.id}-${orderNumber}`,
+        subjectId: subject.id,
+        name: partial.name || `Paper ${orderNumber}`,
+        totalMarks: partial.totalMarks ?? 100,
+        weight: partial.weight,
+        orderNumber,
+      });
+    });
+  }
+
+  saveSubjectComponents(components);
+  return components;
+}
+
+function getStoredSubjects(): { id: string; name: string }[] {
+  try {
+    const stored = localStorage.getItem(APP_STATE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as { subjects?: unknown };
+      if (Array.isArray(parsed.subjects) && parsed.subjects.length > 0) {
+        return parsed.subjects
+          .map(s => s as { id?: string; name?: string })
+          .filter(s => typeof s.id === 'string' && typeof s.name === 'string') as { id: string; name: string }[];
+      }
+    }
+  } catch {
+    // Fall through to defaults
+  }
+  return DEFAULT_SUBJECTS.map(s => ({ id: s.id, name: s.name }));
 }
 
 /**
