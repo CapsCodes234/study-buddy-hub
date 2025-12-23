@@ -1,58 +1,115 @@
-# Welcome to your Lovable project
+# Study Tracker (Study Buddy Hub)
 
-## Project info
+A personal, local-first study tracking application with AI-powered syllabus extraction, past paper logging, and exam countdown features.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **AI-Powered Syllabus Extraction**: Upload PDF syllabi and extract structured topics automatically
+- **Past Paper Logging**: Track raw marks with automatic percentage conversion
+- **Exam Countdown**: Schedule exams and get reminders
+- **Progress Tracking**: Visual progress for each subject and topic
+- **Theme Support**: Light, dark, and system themes with accessibility features
 
-There are several ways of editing your application.
+## Getting Started
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Installation
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navigate to project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
+# Install dependencies
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## AI Extraction Setup
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+This app supports AI-powered syllabus extraction from PDF files. The AI features are **read-only and advisory** - no data is saved until you explicitly confirm.
 
-**Use GitHub Codespaces**
+### Environment Variables
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create a `.env.local` file in the project root:
 
-## What technologies are used for this project?
+```env
+# AI Provider: 'openrouter' (default) or 'openai'
+VITE_AI_PROVIDER=openrouter
 
-This project is built with:
+# Your API key
+VITE_AI_API_KEY=your_api_key_here
+```
+
+### Supported Providers
+
+1. **OpenRouter (default)**: Recommended for cost-effective AI usage
+   - Sign up at [openrouter.ai](https://openrouter.ai)
+   - Uses `google/gemini-2.0-flash-001` model by default
+   - Set a monthly credit limit to control costs
+
+2. **OpenAI**: Higher-capacity models
+   - Set `VITE_AI_PROVIDER=openai`
+   - Uses `gpt-4o-mini` by default
+   - Get API key from [platform.openai.com](https://platform.openai.com)
+
+3. **Mock Provider**: For development without API keys
+   - Set `VITE_AI_PROVIDER=mock`
+   - Returns sample extraction data
+
+### How to Use PDF Extraction Safely
+
+1. **Upload**: Drag & drop or select a PDF syllabus file
+2. **Review**: The extraction modal shows detected topics with confidence scores
+3. **Edit**: Modify, merge, or split topics as needed
+4. **Accept**: Only after clicking "Save" is data written to your app
+5. **Changelog**: Original extractions are preserved for re-review
+
+### Cost Safeguards
+
+- **Set credit limits**: On OpenRouter, set a monthly limit (e.g., $5/month)
+- **Mock mode**: Use `VITE_AI_PROVIDER=mock` for testing without API costs
+- **Review before save**: AI results are always previewed before saving
+
+## CSV Import
+
+As a fallback to AI extraction, import syllabus data via CSV:
+
+### Expected Format
+
+```csv
+Subject,MainTopic,Subtopic,Bullet,ComponentName,ComponentTotalMark,OrderNumber
+Physics,Mechanics,Forces,Newton's laws,Paper 1,40,1
+```
+
+- **Required columns**: Subject, MainTopic, Subtopic, Bullet
+- **Optional columns**: ComponentName, ComponentTotalMark, OrderNumber
+
+See `sample/syllabus-sample.csv` for a complete example.
+
+## Reminder System
+
+### Default Settings
+
+- **Remind Later Interval**: 3 days (configurable)
+- **Main Exam Lead Days**: 7, 3, 1 days before
+- **Mock Exam Lead Days**: 3, 1 days before
+
+### Configuring Reminders
+
+1. Go to Settings → Reminder Settings
+2. Adjust default intervals
+3. Set per-exam-type lead times
+4. Enable/disable all reminders
+
+## What technologies are used?
 
 - Vite
 - TypeScript
