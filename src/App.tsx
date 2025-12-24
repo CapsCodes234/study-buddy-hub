@@ -1,3 +1,7 @@
+/**
+ * Updated App with Subject Routing
+ */
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,9 +22,19 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Main Routes */}
             <Route path="/" element={<Index />} />
+            <Route path="/settings" element={<Index />} />
+            
+            {/* Subject Routes */}
+            <Route path="/:subjectId" element={<Index />} />
+            <Route path="/:subjectId/syllabus" element={<Index />} />
+            <Route path="/:subjectId/papers" element={<Index />} />
+            
+            {/* Utility Routes */}
             <Route path="/theme-demo" element={<ThemeDemo />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            
+            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
