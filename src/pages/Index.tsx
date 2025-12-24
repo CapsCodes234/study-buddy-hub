@@ -1,28 +1,29 @@
-import { useState, useCallback, useEffect } from 'react';
+/**
+ * Main Index Page - Route Handler
+ * Handles all main routes and displays appropriate content
+ */
+
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAppState } from '@/hooks/useAppState';
-import { Navigation, Tab } from '@/components/layout/Navigation';
+import { Header } from '@/components/layout/Header';
 import { OnboardingModal } from '@/components/layout/OnboardingModal';
 import { Dashboard } from '@/components/dashboard/Dashboard';
-import { SyllabusTable } from '@/components/syllabus/SyllabusTable';
-import { PastPapers } from '@/components/papers/PastPapers';
 import { Settings } from '@/components/settings/Settings';
-import { NavigationFilters, BulletFilters, PaperFilters } from '@/types';
+import { SubjectOverview } from '@/pages/subjects/SubjectOverview';
+import { SubjectSyllabus } from '@/pages/subjects/SubjectSyllabus';
+import { SubjectPapers } from '@/pages/subjects/SubjectPapers';
+import { NavigationFilters } from '@/types';
+import { StreakData, DEFAULT_STREAK_DATA } from '@/types/reminders';
+import { loadStreakData, recordActivity } from '@/lib/streak';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-  const [bulletFilters, setBulletFilters] = useState<BulletFilters>({
-    subjectId: null,
-    searchText: '',
-    statusFilter: 'all',
-    hideCompleted: false,
-  });
-  const [paperFilters, setPaperFilters] = useState<PaperFilters>({
-    subjectId: null,
-    year: null,
-    completionFilter: 'all',
-  });
-  const [highlightId, setHighlightId] = useState<string | undefined>();
-  
+  const { subjectId } = useParams<{ subjectId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [streakData, setStreakData] = useState<StreakData>(() => loadStreakData());
+
   const {
     state,
     isLoading,
@@ -39,40 +40,101 @@ const Index = () => {
     clearAllData,
   } = useAppState();
 
-  // Handle deep navigation from dashboard
-  const handleNavigate = useCallback((filters: NavigationFilters) => {
-    setActiveTab(filters.tab);
-    
-    if (filters.bulletFilters) {
-      setBulletFilters(filters.bulletFilters);
+  // Determine current view based on route
+  const currentView = useMemo(() => {
+    const path = location.pathname;
+
+    if (path === '/settings') {
+      return 'settings';
     }
-    
-    if (filters.paperFilters) {
-      setPaperFilters(filters.paperFilters);
+
+    if (subjectId) {
+      const subject = state.subjects.find((s) => s.id === subjectId);
+      if (!subject) {
+        return 'not_found';
+      }
+
+      if (path.endsWith('/syllabus')) {
+        return 'subject_syllabus';
+      }
+      if (path.endsWith('/papers')) {
+        return 'subject_papers';
+      }
+      return 'subject_overview';
     }
-    
-    if (filters.highlightId) {
-      setHighlightId(filters.highlightId);
-      // Clear highlight after a delay
-      setTimeout(() => setHighlightId(undefined), 3000);
+
+    return 'dashboard';
+  }, [location.pathname, subjectId, state.subjects]);
+
+  // Get current subject if on a subject page
+  const currentSubject = useMemo(() => {
+    if (subjectId) {
+      return state.subjects.find((s) => s.id === subjectId);
     }
+    return null;
+  }, [subjectId, state.subjects]);
+
+  // Handle navigation from dashboard cards
+  const handleNavigate = useCallback(
+    (filters: NavigationFilters) => {
+      if (filters.tab === 'dashboard') {
+        navigate('/');
+      } else if (filters.tab === 'settings') {
+        navigate('/settings');
+      } else if (filters.tab === 'syllabus' && filters.bulletFilters?.subjectId) {
+        const path = filters.highlightId
+          ? `/${filters.bulletFilters.subjectId}/syllabus?highlight=${filters.highlightId}`
+          : `/${filters.bulletFilters.subjectId}/syllabus`;
+        navigate(path);
+      } else if (filters.tab === 'papers' && filters.paperFilters?.subjectId) {
+        const path = filters.highlightId
+          ? `/${filters.paperFilters.subjectId}/papers?highlight=${filters.highlightId}`
+          : `/${filters.paperFilters.subjectId}/papers`;
+        navigate(path);
+      }
+    },
+    [navigate]
+  );
+
+  // Track activity for streak
+  const handleActivityRecorded = useCallback(() => {
+    const newStreakData = recordActivity();
+    setStreakData(newStreakData);
   }, []);
 
-  // Clear highlight when changing tabs
-  useEffect(() => {
-    if (highlightId) {
-      // Scroll to highlighted element
-      const element = document.getElementById(`bullet-${highlightId}`) || 
-                      document.getElementById(`paper-${highlightId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Wrap update functions to record activity
+  const handleUpdateBullet = useCallback(
+    (id: string, updates: Partial<typeof state.bullets[0]>) => {
+      updateBullet(id, updates);
+      // Record activity when marking something done/confident
+      if (updates.done || updates.status === 'Green') {
+        handleActivityRecorded();
       }
-    }
-  }, [highlightId, activeTab]);
+    },
+    [updateBullet, handleActivityRecorded]
+  );
+
+  const handleUpdatePaper = useCallback(
+    (id: string, updates: Partial<typeof state.pastPapers[0]>) => {
+      updatePastPaper(id, updates);
+      // Record activity when completing a paper
+      if (updates.completed) {
+        handleActivityRecorded();
+      }
+    },
+    [updatePastPaper, handleActivityRecorded]
+  );
 
   const handleOnboardingComplete = () => {
     updateSettings({ hasCompletedOnboarding: true });
   };
+
+  // Redirect invalid subject routes
+  useEffect(() => {
+    if (currentView === 'not_found' && subjectId) {
+      navigate('/');
+    }
+  }, [currentView, subjectId, navigate]);
 
   if (isLoading) {
     return (
@@ -84,10 +146,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header subjects={state.subjects} streakData={streakData} />
 
       <main className="container mx-auto px-4 py-6">
-        {activeTab === 'dashboard' && (
+        {currentView === 'dashboard' && (
           <Dashboard
             subjects={state.subjects}
             bullets={state.bullets}
@@ -97,39 +159,40 @@ const Index = () => {
           />
         )}
 
-        {activeTab === 'syllabus' && (
-          <SyllabusTable
-            bullets={state.bullets}
-            subjects={state.subjects}
-            aiEnabled={!!import.meta.env.VITE_AI_API_KEY && state.settings.aiExtractionEnabled}
-            initialFilters={bulletFilters}
-            highlightId={highlightId}
-            onUpdateBullet={updateBullet}
-            onDeleteBullet={deleteBullet}
-            onBulkUpdate={bulkUpdateBullets}
-            onImport={(bullets) => addBullets(bullets)}
-          />
-        )}
-
-        {activeTab === 'papers' && (
-          <PastPapers
-            papers={state.pastPapers}
-            subjects={state.subjects}
-            bullets={state.bullets}
-            initialFilters={paperFilters}
-            highlightId={highlightId}
-            onAddPaper={addPastPaper}
-            onUpdatePaper={updatePastPaper}
-            onDeletePaper={deletePastPaper}
-          />
-        )}
-
-        {activeTab === 'settings' && (
+        {currentView === 'settings' && (
           <Settings
             state={state}
             onUpdateSettings={updateSettings}
             onImportState={importState}
             onClearData={clearAllData}
+          />
+        )}
+
+        {currentView === 'subject_overview' && currentSubject && (
+          <SubjectOverview
+            subject={currentSubject}
+            bullets={state.bullets}
+            pastPapers={state.pastPapers}
+            allSubjects={state.subjects}
+            aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
+            onUpdateBullet={handleUpdateBullet}
+          />
+        )}
+
+        {currentView === 'subject_syllabus' && currentSubject && (
+          <SubjectSyllabus
+            subject={currentSubject}
+            bullets={state.bullets}
+            onUpdateBullet={handleUpdateBullet}
+          />
+        )}
+
+        {currentView === 'subject_papers' && currentSubject && (
+          <SubjectPapers
+            subject={currentSubject}
+            pastPapers={state.pastPapers}
+            onAddPaper={addPastPaper}
+            onUpdatePaper={handleUpdatePaper}
           />
         )}
       </main>
