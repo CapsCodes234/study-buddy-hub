@@ -38,6 +38,8 @@ import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
 import { generatePreview, parseCSV, type CSVImportResult } from '@/lib/csvImport';
 import { useComponents } from '@/hooks/useComponents';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
+import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
+import { useSubjectTheme } from '@/components/providers/SubjectThemeProvider';
 
 interface SubjectOverviewProps {
   subject: Subject;
@@ -62,6 +64,7 @@ export const SubjectOverview = memo(function SubjectOverview({
   const [showExplanation, setShowExplanation] = useState(false);
   const { toast } = useToast();
   const { addComponents } = useComponents(subject.id);
+  const { isSubjectPage } = useSubjectTheme();
 
   const [previewData, setPreviewData] = useState<ReturnType<typeof generatePreview> | null>(null);
   const [importResult, setImportResult] = useState<CSVImportResult | null>(null);
@@ -235,16 +238,18 @@ export const SubjectOverview = memo(function SubjectOverview({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{subject.name}</h1>
-          <p className="text-muted-foreground mt-1">
-            Your command center for {subject.name} preparation
-          </p>
-        </div>
-        <Badge variant="secondary" className={cn('text-sm py-1 self-start', paceStatus.color)}>
+    <SubjectPageWrapper 
+      subjectId={subject.id}
+      title={subject.name}
+      subtitle={`Your command center for ${subject.name} preparation`}
+    >
+      {/* Background pattern layer */}
+      {isSubjectPage && (
+        <div className="subject-bg" aria-hidden="true" />
+      )}
+
+      <div className="flex items-center justify-end -mt-4 mb-4">
+        <Badge variant="secondary" className={cn('text-sm py-1', paceStatus.color)}>
           {paceStatus.icon} {paceStatus.label}
         </Badge>
       </div>
@@ -525,7 +530,7 @@ export const SubjectOverview = memo(function SubjectOverview({
           <ArrowRight className="h-4 w-4 ml-auto" />
         </Button>
       </div>
-    </div>
+    </SubjectPageWrapper>
   );
 });
 

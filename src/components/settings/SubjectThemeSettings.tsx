@@ -61,6 +61,8 @@ export function loadThemeOverrides(): ThemeOverrides {
 
 export function saveThemeOverrides(overrides: ThemeOverrides): void {
   localStorage.setItem(THEME_OVERRIDES_KEY, JSON.stringify(overrides));
+  // Dispatch event to notify SubjectThemeProvider of changes
+  window.dispatchEvent(new CustomEvent('subject-theme-updated'));
 }
 
 export function SubjectThemeSettings() {
@@ -80,6 +82,8 @@ export function SubjectThemeSettings() {
   const handleToggleGlobal = (enabled: boolean) => {
     setThemeEnabled(enabled);
     localStorage.setItem(THEME_ENABLED_KEY, String(enabled));
+    // Dispatch event to notify provider
+    window.dispatchEvent(new CustomEvent('subject-theme-updated'));
     toast({
       title: enabled ? 'Subject themes enabled' : 'Subject themes disabled',
       description: enabled 
