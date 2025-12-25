@@ -67,7 +67,7 @@ export function calculateMomentum(
     const dateStrings = sortedDates.map(d => d.toISOString().split('T')[0]);
     const uniqueDateStrings = Array.from(new Set(dateStrings)).sort().reverse();
     
-    let checkDate = new Date(today);
+    const checkDate = new Date(today);
     let dateIndex = 0;
     
     while (dateIndex < uniqueDateStrings.length) {

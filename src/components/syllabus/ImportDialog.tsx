@@ -219,8 +219,8 @@ export const ImportDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle>Import Syllabus Data</DialogTitle>
           <DialogDescription>
             Upload a CSV file or paste data directly. CSV should have columns:
@@ -228,7 +228,7 @@ export const ImportDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 py-4 pb-24">
           {/* AI Toggle (disabled by default) */}
           <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ export const ImportDialog = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing || isExtractingPDF}>
             Cancel
           </Button>

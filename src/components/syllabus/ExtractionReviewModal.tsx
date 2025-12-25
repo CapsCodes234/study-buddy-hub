@@ -364,8 +364,8 @@ export const ExtractionReviewModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Review Extracted Syllabus for {editedExtraction.subject}
@@ -390,8 +390,7 @@ export const ExtractionReviewModal = ({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
+        <div className="space-y-6 py-4 pb-24">
             {/* Subject name editing */}
             <div>
               <Label>Subject Name</Label>
@@ -540,10 +539,9 @@ export const ExtractionReviewModal = ({
                 ))}
               </Accordion>
             </div>
-          </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="mt-4">
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>

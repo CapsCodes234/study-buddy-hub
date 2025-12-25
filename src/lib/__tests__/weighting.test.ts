@@ -243,12 +243,39 @@ describe('Weighting Library', () => {
         createMockBullet('3', 'physics', 'Green', true),
       ];
       
-      const papers = [
-        { id: 'p1', subjectId: 'math', completed: true },
-        { id: 'p2', subjectId: 'math', completed: false },
+      const now = new Date().toISOString();
+      const papers: PastPaper[] = [
+        {
+          id: 'p1',
+          subjectId: 'math',
+          componentId: 'component-math-1',
+          year: 2024,
+          session: 'May/June',
+          paper: 'P1',
+          completed: true,
+          rawScore: 50,
+          totalMarks: 100,
+          percentageScore: 50,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: 'p2',
+          subjectId: 'math',
+          componentId: 'component-math-1',
+          year: 2024,
+          session: 'May/June',
+          paper: 'P1',
+          completed: false,
+          rawScore: 0,
+          totalMarks: 100,
+          percentageScore: 0,
+          createdAt: now,
+          updatedAt: now,
+        },
       ];
       
-      const summary = getProgressSummary(subjects, bullets, papers as any);
+      const summary = getProgressSummary(subjects, bullets, papers);
       
       expect(summary.overall.rawProgress).toBeCloseTo(66.67, 0);
       expect(summary.bySubject).toHaveLength(2);

@@ -43,6 +43,7 @@ import { Subject, PastPaper } from '@/types';
 import { Label } from '@/components/ui/label';
 import { useComponents } from '@/hooks/useComponents';
 import { groupPapersByYear } from '@/lib/paperAnalytics';
+import { SubjectTabs } from '@/components/layout/SubjectTabs';
 
 interface SubjectPapersProps {
   subject: Subject;
@@ -190,12 +191,12 @@ export const SubjectPapers = memo(function SubjectPapers({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/${subject.id}`)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{subject.name} Past Papers</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Past Papers</h1>
           <p className="text-sm text-muted-foreground">
             Track your paper practice and scores
           </p>
@@ -208,14 +209,14 @@ export const SubjectPapers = memo(function SubjectPapers({
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
+            <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
               <DialogTitle>Log Past Paper Attempt</DialogTitle>
               <DialogDescription>
                 Enter your marks for {subject.name}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 py-4 pb-24">
               <div>
                 <Label htmlFor="component">Component *</Label>
                 <Select
@@ -248,7 +249,7 @@ export const SubjectPapers = memo(function SubjectPapers({
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="year">Year *</Label>
                   <Input
@@ -370,7 +371,7 @@ export const SubjectPapers = memo(function SubjectPapers({
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
               <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
                 Cancel
               </Button>
@@ -385,6 +386,8 @@ export const SubjectPapers = memo(function SubjectPapers({
           </DialogContent>
         </Dialog>
       </div>
+
+      <SubjectTabs subjectId={subject.id} />
 
       {/* Progress Bar */}
       <Card>
@@ -407,7 +410,7 @@ export const SubjectPapers = memo(function SubjectPapers({
       </Card>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -417,14 +420,15 @@ export const SubjectPapers = memo(function SubjectPapers({
             className="pl-9"
           />
         </div>
-        <Select
-          value={completionFilter}
-          onValueChange={(v) => setCompletionFilter(v as CompletionFilter)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
+        <div className="flex gap-2">
+          <Select
+            value={completionFilter}
+            onValueChange={(v) => setCompletionFilter(v as CompletionFilter)}
+          >
+            <SelectTrigger className="w-[130px] sm:w-[150px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Papers</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
@@ -432,7 +436,7 @@ export const SubjectPapers = memo(function SubjectPapers({
           </SelectContent>
         </Select>
         <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[100px] sm:w-[120px]">
             <SelectValue placeholder="Year" />
           </SelectTrigger>
           <SelectContent>
@@ -444,6 +448,7 @@ export const SubjectPapers = memo(function SubjectPapers({
             ))}
           </SelectContent>
         </Select>
+        </div>
       </div>
 
       {/* Papers List */}

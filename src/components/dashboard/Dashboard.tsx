@@ -94,7 +94,7 @@ export const Dashboard = memo(({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary/10 rounded-lg">
             <GraduationCap className="h-6 w-6 text-primary" />
@@ -106,26 +106,28 @@ export const Dashboard = memo(({
             </p>
           </div>
         </div>
-        {aiFeaturesEnabled && hasAnyData && (
-          <Button
-            variant="outline"
-            onClick={() => setSummaryModalOpen(true)}
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            Generate Study Summary
-          </Button>
-        )}
-        {onOpenReflection && (
-          <Button
-            variant="outline"
-            onClick={onOpenReflection}
-            className="gap-2"
-          >
-            <Target className="h-4 w-4" />
-            Weekly Reflection
-          </Button>
-        )}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {aiFeaturesEnabled && hasAnyData && (
+            <Button
+              variant="outline"
+              onClick={() => setSummaryModalOpen(true)}
+              className="gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate Study Summary
+            </Button>
+          )}
+          {onOpenReflection && (
+            <Button
+              variant="outline"
+              onClick={onOpenReflection}
+              className="gap-2"
+            >
+              <Target className="h-4 w-4" />
+              Weekly Reflection
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Empty States */}

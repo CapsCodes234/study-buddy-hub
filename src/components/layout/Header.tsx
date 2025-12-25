@@ -6,7 +6,7 @@
 
 import { memo, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, ChevronRight, Settings, Calculator, Cpu, Atom } from 'lucide-react';
+import { BookOpen, LayoutDashboard, ChevronRight, Settings, Calendar, Calculator, Cpu, Atom } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { StreakCounter } from '@/components/ui/StreakCounter';
@@ -76,6 +76,8 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
       }
     } else if (parts[0] === 'settings') {
       crumbs.push({ label: 'Settings', href: '/settings', icon: Settings });
+    } else if (parts[0] === 'exams') {
+      crumbs.push({ label: 'Exams', href: '/exams', icon: Calendar });
     }
 
     return crumbs;
@@ -122,6 +124,19 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
             >
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
+            </Button>
+
+            <Button
+              variant={location.pathname === '/exams' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => navigate('/exams')}
+              className={cn(
+                'gap-2 shrink-0',
+                location.pathname === '/exams' && 'bg-primary text-primary-foreground'
+              )}
+            >
+              <Calendar className="h-4 w-4" />
+              <span className="hidden sm:inline">Exams</span>
             </Button>
 
             {subjects.map((subject) => {

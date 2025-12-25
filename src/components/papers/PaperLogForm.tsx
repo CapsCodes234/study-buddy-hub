@@ -199,7 +199,7 @@ export const PaperLogForm = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5 text-primary" />
             {existingPaper ? 'Edit Past Paper' : 'Log Past Paper'}
@@ -209,7 +209,7 @@ export const PaperLogForm = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 pb-24">
           {/* Paper Details */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -398,7 +398,10 @@ export const PaperLogForm = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Difficulty (optional)</Label>
-              <Select value={difficulty} onValueChange={(v) => setDifficulty(v as any)}>
+              <Select
+                value={difficulty}
+                onValueChange={(v) => setDifficulty(v as 'easy' | 'medium' | 'hard' | '')}
+              >
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select difficulty" />
                 </SelectTrigger>
@@ -423,7 +426,7 @@ export const PaperLogForm = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

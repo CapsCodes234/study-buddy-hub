@@ -18,6 +18,7 @@ import {
   Info,
   Check,
   X,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +37,7 @@ import { Subject, Bullet, PastPaper } from '@/types';
 import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
 import { generatePreview, parseCSV, type CSVImportResult } from '@/lib/csvImport';
 import { useComponents } from '@/hooks/useComponents';
+import { SubjectTabs } from '@/components/layout/SubjectTabs';
 
 interface SubjectOverviewProps {
   subject: Subject;
@@ -64,6 +66,7 @@ export const SubjectOverview = memo(function SubjectOverview({
   const [previewData, setPreviewData] = useState<ReturnType<typeof generatePreview> | null>(null);
   const [importResult, setImportResult] = useState<CSVImportResult | null>(null);
   const [useAI, setUseAI] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Calculate progress stats
   const stats = useMemo(() => {
@@ -164,7 +167,7 @@ export const SubjectOverview = memo(function SubjectOverview({
     }
   };
 
-  const confirmImport = () => {
+  const confirmImport = async () => {
     if (!importResult) return;
     if (!onAddBullets) {
       toast({
@@ -175,6 +178,7 @@ export const SubjectOverview = memo(function SubjectOverview({
       return;
     }
 
+    setImporting(true);
     try {
       const bulletsToAdd: Omit<Bullet, 'id' | 'createdAt' | 'updatedAt'>[] = importResult.syllabus.map((row) => ({
         subjectId: subject.id,
@@ -220,6 +224,8 @@ export const SubjectOverview = memo(function SubjectOverview({
         description: message,
         variant: 'destructive',
       });
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -231,17 +237,19 @@ export const SubjectOverview = memo(function SubjectOverview({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
         <div>
-          <h1 className="text-3xl font-bold">{subject.name}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">{subject.name}</h1>
           <p className="text-muted-foreground mt-1">
             Your command center for {subject.name} preparation
           </p>
         </div>
-        <Badge variant="secondary" className={cn('text-sm py-1', paceStatus.color)}>
+        <Badge variant="secondary" className={cn('text-sm py-1 self-start', paceStatus.color)}>
           {paceStatus.icon} {paceStatus.label}
         </Badge>
       </div>
+
+      <SubjectTabs subjectId={subject.id} />
 
       {/* Main Progress Card */}
       <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -253,7 +261,7 @@ export const SubjectOverview = memo(function SubjectOverview({
             </span>
           </div>
           <Progress value={stats.overallProgress} className="h-3 mb-4" />
-          <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div>
               <div className="text-2xl font-bold">{stats.confidentTopics}</div>
               <div className="text-xs text-muted-foreground">
@@ -297,10 +305,9 @@ export const SubjectOverview = memo(function SubjectOverview({
                 onChange={handleFileUpload}
                 className="cursor-pointer"
               />
-              <p className="text-sm text-muted-foreground mt-2">
-                <strong>For Syllabus:</strong> Main Topic, Subtopic, Bullet Point Text, Level (optional), Topic Number (optional)
-                <br />
-                <strong>For Components:</strong> Component Name, Paper Code, Duration (min), Total Marks, Weighting (%)
+              <p className="text-sm text-muted-foreground mt-2 space-y-1">
+                <div><strong>For Syllabus:</strong> Main Topic, Subtopic, Bullet Point Text, Level (optional), Topic Number (optional)</div>
+                <div><strong>For Components:</strong> Component Name, Paper Code, Duration (min), Total Marks, Weighting (%)</div>
               </p>
             </div>
 
@@ -326,11 +333,20 @@ export const SubjectOverview = memo(function SubjectOverview({
                 )}
 
                 <div className="flex gap-2">
-                  <Button onClick={confirmImport} className="flex-1">
-                    <Check className="mr-2 h-4 w-4" />
-                    Confirm Import
+                  <Button onClick={confirmImport} className="flex-1" disabled={importing}>
+                    {importing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Confirm Import
+                      </>
+                    )}
                   </Button>
-                  <Button variant="outline" onClick={cancelImport} className="flex-1">
+                  <Button variant="outline" onClick={cancelImport} className="flex-1" disabled={importing}>
                     <X className="mr-2 h-4 w-4" />
                     Cancel
                   </Button>
