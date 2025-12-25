@@ -87,78 +87,57 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
     )}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14">
-          {/* Logo & Breadcrumbs */}
-          <div className="flex items-center gap-4">
-            {/* Logo */}
-            <Link
-              to="/"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          {/* Logo */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
+          >
+            <div className="p-1.5 bg-primary rounded-lg">
+              <BookOpen className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="font-semibold text-lg hidden sm:inline">Study Buddy</span>
+          </Link>
+
+          {/* Main Navigation - Subject Tabs */}
+          <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide mx-4">
+            <Button
+              variant={location.pathname === '/' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => navigate('/')}
+              className={cn(
+                'gap-2 shrink-0',
+                location.pathname === '/' && 'bg-primary text-primary-foreground'
+              )}
             >
-              <div className="p-1.5 bg-primary rounded-lg">
-                <BookOpen className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-semibold text-lg hidden md:inline">Study Buddy</span>
-            </Link>
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </Button>
 
-            {/* Breadcrumbs (desktop only) */}
-            {breadcrumbs.length > 0 && (
-              <nav className="hidden sm:flex items-center gap-1 text-sm">
-                {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.href} className="flex items-center gap-1">
-                    {index > 0 && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <Link
-                      to={crumb.href}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors',
-                        isActive(crumb.href)
-                          ? 'text-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                      )}
-                    >
-                      {crumb.icon && <crumb.icon className="h-4 w-4" />}
-                      {crumb.label}
-                    </Link>
-                  </div>
-                ))}
-              </nav>
-            )}
-          </div>
+            {subjects.map((subject) => {
+              const Icon = getSubjectIcon(subject.id, subject.name);
+              const isSubjectActive = location.pathname.startsWith(`/${subject.id}`);
+              
+              return (
+                <Button
+                  key={subject.id}
+                  variant={isSubjectActive ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => navigate(`/${subject.id}`)}
+                  className={cn(
+                    'gap-2 shrink-0',
+                    isSubjectActive && 'bg-primary text-primary-foreground'
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="hidden md:inline">{subject.name}</span>
+                  <span className="md:hidden">{subject.name.split(' ')[0]}</span>
+                </Button>
+              );
+            })}
+          </nav>
 
-          {/* Navigation Links */}
-          <div className="flex items-center gap-2">
-            {/* Subject Quick Links (desktop) */}
-            <nav className="hidden lg:flex items-center gap-1">
-              <Button
-                variant={location.pathname === '/' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => navigate('/')}
-                className="gap-2"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Button>
-
-              {subjects.map((subject) => {
-                const Icon = getSubjectIcon(subject.id, subject.name);
-                const isSubjectActive = location.pathname.startsWith(`/${subject.id}`);
-                
-                return (
-                  <Button
-                    key={subject.id}
-                    variant={isSubjectActive ? 'secondary' : 'ghost'}
-                    size="sm"
-                    onClick={() => navigate(`/${subject.id}`)}
-                    className="gap-2"
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden xl:inline">{subject.name}</span>
-                  </Button>
-                );
-              })}
-            </nav>
-
+          {/* Right Side Actions */}
+          <div className="flex items-center gap-2 shrink-0">
             {/* Streak Counter */}
             <StreakCounter streakData={streakData} />
 
@@ -177,6 +156,35 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
             <ThemeToggle />
           </div>
         </div>
+
+        {/* Breadcrumbs - Show when inside a subject subpage */}
+        {breadcrumbs.length > 1 && (
+          <div className="flex items-center gap-1 text-sm py-2 border-t border-border/50 -mx-4 px-4 bg-muted/30">
+            <Link
+              to="/"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+            </Link>
+            {breadcrumbs.map((crumb, index) => (
+              <div key={crumb.href} className="flex items-center gap-1">
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                <Link
+                  to={crumb.href}
+                  className={cn(
+                    'flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors',
+                    index === breadcrumbs.length - 1
+                      ? 'text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {crumb.icon && <crumb.icon className="h-3.5 w-3.5" />}
+                  {crumb.label}
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </header>
   );
