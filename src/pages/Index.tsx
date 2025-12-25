@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAppState } from '@/hooks/useAppState';
+import { useReminders } from '@/hooks/useReminders';
 import { Header } from '@/components/layout/Header';
 import { OnboardingModal } from '@/components/layout/OnboardingModal';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -13,8 +14,10 @@ import { Settings } from '@/components/settings/Settings';
 import { SubjectOverview } from '@/pages/subjects/SubjectOverview';
 import { SubjectSyllabus } from '@/pages/subjects/SubjectSyllabus';
 import { SubjectPapers } from '@/pages/subjects/SubjectPapers';
+import { MilestoneToast } from '@/components/motivation/MilestoneToast';
+import { WeeklyReflection } from '@/components/reflection/WeeklyReflection';
 import { NavigationFilters } from '@/types';
-import { StreakData, DEFAULT_STREAK_DATA } from '@/types/reminders';
+import { StreakData } from '@/types/reminders';
 import { loadStreakData, recordActivity } from '@/lib/streak';
 
 const Index = () => {
@@ -23,7 +26,14 @@ const Index = () => {
   const navigate = useNavigate();
 
   const [streakData, setStreakData] = useState<StreakData>(() => loadStreakData());
-
+  const [reflectionOpen, setReflectionOpen] = useState(false);
+  
+  // Reminders hook for notifications
+  const {
+    upcomingReminders,
+    dismissReminder,
+    snoozeReminder,
+  } = useReminders();
   const {
     state,
     isLoading,
@@ -156,6 +166,10 @@ const Index = () => {
             pastPapers={state.pastPapers}
             aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
             onNavigate={handleNavigate}
+            upcomingReminders={upcomingReminders}
+            onDismissReminder={dismissReminder}
+            onSnoozeReminder={snoozeReminder}
+            onOpenReflection={() => setReflectionOpen(true)}
           />
         )}
 
@@ -200,6 +214,21 @@ const Index = () => {
       <OnboardingModal
         open={!state.settings.hasCompletedOnboarding}
         onComplete={handleOnboardingComplete}
+      />
+
+      {/* Milestone celebration toasts */}
+      <MilestoneToast
+        subjects={state.subjects}
+        bullets={state.bullets}
+        pastPapers={state.pastPapers}
+        streakDays={streakData.currentStreak}
+      />
+
+      {/* Weekly reflection modal */}
+      <WeeklyReflection
+        open={reflectionOpen}
+        onOpenChange={setReflectionOpen}
+        subjects={state.subjects}
       />
     </div>
   );
