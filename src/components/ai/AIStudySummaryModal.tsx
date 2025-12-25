@@ -5,6 +5,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,7 +63,7 @@ export const AIStudySummaryModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto scrollbar-hide">
-        <DialogHeader>
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-accent" />
             AI Study Summary
@@ -72,7 +73,7 @@ export const AIStudySummaryModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 py-4 pb-24">
           {!summary && !error && !loading && (
             <div className="text-center py-8">
               <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -198,18 +199,21 @@ export const AIStudySummaryModal = ({
                 </Card>
               )}
 
-              <div className="flex justify-end pt-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Close
-                </Button>
-                <Button onClick={handleGenerate} className="ml-2">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Regenerate
-                </Button>
-              </div>
             </div>
           )}
         </div>
+
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          {summary && (
+            <Button onClick={handleGenerate} disabled={loading}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Regenerate
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

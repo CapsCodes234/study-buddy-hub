@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
-import { PastPaper, Subject, PaperFilters } from '@/types';
+import { useState, useMemo } from 'react';
+import { PastPaper, Subject } from '@/types';
 import { PaperForm } from './PaperForm';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,12 +33,12 @@ import {
   Circle,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useComponents } from '@/hooks/useComponents';
 
 interface PastPapersProps {
   papers: PastPaper[];
   subjects: Subject[];
   bullets: import('@/types').Bullet[];
-  initialFilters?: PaperFilters;
   highlightId?: string;
   onAddPaper: (paper: Omit<PastPaper, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdatePaper: (id: string, updates: Partial<PastPaper>) => void;
@@ -49,7 +49,6 @@ export const PastPapers = ({
   papers,
   subjects,
   bullets,
-  initialFilters,
   highlightId,
   onAddPaper,
   onUpdatePaper,
@@ -57,21 +56,17 @@ export const PastPapers = ({
 }: PastPapersProps) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingPaper, setEditingPaper] = useState<PastPaper | undefined>();
-  const [filterSubject, setFilterSubject] = useState<string>(initialFilters?.subjectId || 'all');
-  const [filterYear, setFilterYear] = useState<number | null>(initialFilters?.year || null);
-  const [filterCompletion, setFilterCompletion] = useState<'all' | 'completed' | 'incomplete'>(
-    initialFilters?.completionFilter || 'all'
-  );
+  const [filterSubject, setFilterSubject] = useState<string>('all');
+  const [filterYear, setFilterYear] = useState<number | null>(null);
+  const [filterCompletion, setFilterCompletion] = useState<'all' | 'completed' | 'incomplete'>('all');
   const { toast } = useToast();
-  
-  // Update filters when initialFilters change (from navigation)
-  useEffect(() => {
-    if (initialFilters) {
-      setFilterSubject(initialFilters.subjectId || 'all');
-      setFilterYear(initialFilters.year);
-      setFilterCompletion(initialFilters.completionFilter || 'all');
-    }
-  }, [initialFilters]);
+  const { components } = useComponents();
+
+  const getPaperPercentage = (paper: PastPaper): number | undefined => {
+    if (paper.percentageScore !== undefined && paper.percentageScore !== null) return paper.percentageScore;
+    if (paper.score !== undefined && paper.score !== null) return paper.score;
+    return undefined;
+  };
 
   const filteredPapers = useMemo(() => {
     return papers.filter((paper) => {
@@ -326,20 +321,28 @@ export const PastPapers = ({
                     <TableCell>{paper.year}</TableCell>
                     <TableCell>{paper.session}</TableCell>
                     <TableCell>
-                      P{paper.paper}
+                      {components.find(c => c.id === paper.componentId)?.paperCode || paper.paper || '—'}
                       {paper.variant && <span className="text-muted-foreground"> v{paper.variant}</span>}
                     </TableCell>
                     <TableCell>
-                      {paper.score !== undefined ? (
-                        <Badge variant={paper.score >= 70 ? 'default' : paper.score >= 50 ? 'secondary' : 'destructive'}>
-                          {paper.score}%
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
+                      {(() => {
+                        const pct = getPaperPercentage(paper);
+                        return pct !== undefined ? (
+                          <Badge variant={pct >= 75 ? 'default' : pct >= 60 ? 'secondary' : 'destructive'}>
+                            {pct}%
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        );
+                      })()}
+                      {paper.rawScore !== undefined && paper.totalMarks && paper.totalMarks > 0 && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({paper.rawScore}/{paper.totalMarks})
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="max-w-32 truncate text-sm text-muted-foreground">
-                      {paper.comment || '—'}
+                      {paper.notes || paper.comment || '—'}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">

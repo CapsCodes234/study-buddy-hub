@@ -14,6 +14,7 @@ import { Settings } from '@/components/settings/Settings';
 import { SubjectOverview } from '@/pages/subjects/SubjectOverview';
 import { SubjectSyllabus } from '@/pages/subjects/SubjectSyllabus';
 import { SubjectPapers } from '@/pages/subjects/SubjectPapers';
+import Exams from '@/pages/Exams';
 import { MilestoneToast } from '@/components/motivation/MilestoneToast';
 import { WeeklyReflection } from '@/components/reflection/WeeklyReflection';
 import { NavigationFilters } from '@/types';
@@ -58,6 +59,10 @@ const Index = () => {
       return 'settings';
     }
 
+    if (path === '/exams') {
+      return 'exams';
+    }
+
     if (subjectId) {
       const subject = state.subjects.find((s) => s.id === subjectId);
       if (!subject) {
@@ -91,19 +96,35 @@ const Index = () => {
         navigate('/');
       } else if (filters.tab === 'settings') {
         navigate('/settings');
-      } else if (filters.tab === 'syllabus' && filters.bulletFilters?.subjectId) {
-        const path = filters.highlightId
-          ? `/${filters.bulletFilters.subjectId}/syllabus?highlight=${filters.highlightId}`
-          : `/${filters.bulletFilters.subjectId}/syllabus`;
-        navigate(path);
-      } else if (filters.tab === 'papers' && filters.paperFilters?.subjectId) {
-        const path = filters.highlightId
-          ? `/${filters.paperFilters.subjectId}/papers?highlight=${filters.highlightId}`
-          : `/${filters.paperFilters.subjectId}/papers`;
-        navigate(path);
+      } else if (filters.tab === 'syllabus') {
+        if (filters.bulletFilters?.subjectId) {
+          const path = filters.highlightId
+            ? `/${filters.bulletFilters.subjectId}/syllabus?highlight=${filters.highlightId}`
+            : `/${filters.bulletFilters.subjectId}/syllabus`;
+          navigate(path);
+        } else {
+          // Navigate to first subject's syllabus if no subjectId specified
+          const firstSubject = state.subjects[0];
+          if (firstSubject) {
+            navigate(`/${firstSubject.id}/syllabus`);
+          }
+        }
+      } else if (filters.tab === 'papers') {
+        if (filters.paperFilters?.subjectId) {
+          const path = filters.highlightId
+            ? `/${filters.paperFilters.subjectId}/papers?highlight=${filters.highlightId}`
+            : `/${filters.paperFilters.subjectId}/papers`;
+          navigate(path);
+        } else {
+          // Navigate to first subject's papers if no subjectId specified
+          const firstSubject = state.subjects[0];
+          if (firstSubject) {
+            navigate(`/${firstSubject.id}/papers`);
+          }
+        }
       }
     },
-    [navigate]
+    [navigate, state.subjects]
   );
 
   // Track activity for streak
@@ -182,6 +203,10 @@ const Index = () => {
           />
         )}
 
+        {currentView === 'exams' && (
+          <Exams subjects={state.subjects} />
+        )}
+
         {currentView === 'subject_overview' && currentSubject && (
           <SubjectOverview
             subject={currentSubject}
@@ -190,6 +215,7 @@ const Index = () => {
             allSubjects={state.subjects}
             aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
             onUpdateBullet={handleUpdateBullet}
+            onAddBullets={addBullets}
           />
         )}
 

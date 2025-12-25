@@ -17,8 +17,8 @@ interface OnboardingModalProps {
 export const OnboardingModal = ({ open, onComplete }: OnboardingModalProps) => {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-lg">
               <GraduationCap className="h-6 w-6 text-primary" />
@@ -30,7 +30,7 @@ export const OnboardingModal = ({ open, onComplete }: OnboardingModalProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 pb-24">
           {/* R/A/G System */}
           <div>
             <h3 className="font-semibold mb-3">R/A/G Status System</h3>
@@ -87,7 +87,7 @@ export const OnboardingModal = ({ open, onComplete }: OnboardingModalProps) => {
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button onClick={onComplete} className="w-full">
             Get Started
           </Button>

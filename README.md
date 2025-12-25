@@ -5,7 +5,9 @@ A personal, local-first study tracking application with AI-powered syllabus extr
 ## Features
 
 - **AI-Powered Syllabus Extraction**: Upload PDF syllabi and extract structured topics automatically
-- **Past Paper Logging**: Track raw marks with automatic percentage conversion
+- **CSV Import (Subject-Scoped)**: Import syllabus topics and component metadata locked to the current subject
+- **Past Paper Logging (Raw Marks)**: Track raw marks per component with automatic percentage conversion
+- **Past Paper Analytics**: Year → Session → Variant grouping + cross-subject yearly performance
 - **Exam Countdown**: Schedule exams and get reminders
 - **Progress Tracking**: Visual progress for each subject and topic
 - **Theme Support**: Light, dark, and system themes with accessibility features
@@ -80,19 +82,48 @@ VITE_AI_API_KEY=your_api_key_here
 
 ## CSV Import
 
-As a fallback to AI extraction, import syllabus data via CSV:
+As a fallback to AI extraction, you can import data via CSV.
 
-### Expected Format
+CSV import is **subject-scoped**: imports are performed from a subject page and the imported rows are **automatically assigned** to that subject.
+
+### Supported Formats
+
+#### 1) Syllabus Topics CSV
 
 ```csv
-Subject,MainTopic,Subtopic,Bullet,ComponentName,ComponentTotalMark,OrderNumber
-Physics,Mechanics,Forces,Newton's laws,Paper 1,40,1
+MainTopic,Subtopic,Bullet,TopicNumber,OutcomeNumber
+Mechanics,Forces,Newton's laws,1,1
 ```
 
-- **Required columns**: Subject, MainTopic, Subtopic, Bullet
-- **Optional columns**: ComponentName, ComponentTotalMark, OrderNumber
+- **Required columns**
+  - `MainTopic`
+  - `Subtopic`
+  - `Bullet`
+- **Optional columns**
+  - `TopicNumber`
+  - `OutcomeNumber`
 
-See `sample/syllabus-sample.csv` for a complete example.
+#### 2) Past Paper Components CSV
+
+```csv
+ComponentName,PaperCode,DurationMin,TotalMarks,WeightingPercent
+Paper 1 (Multiple Choice),9702/12,75,40,30
+```
+
+- **Required columns**
+  - `ComponentName`
+  - `PaperCode`
+  - `DurationMin`
+  - `TotalMarks`
+- **Optional columns**
+  - `WeightingPercent`
+
+### How to Import
+
+1. Go to a subject page (e.g. `/physics`)
+2. Use the CSV import panel and upload your file
+3. Review the preview
+4. Click **Confirm Import**
 
 ## Reminder System
 
@@ -156,6 +187,29 @@ Theme colors are defined as HSL values in `src/index.css`. To add or modify a co
 - `study-tracker:theme` - light/dark/system
 - `study-tracker:reduced-motion` - true/false  
 - `study-tracker:high-contrast` - true/false
+
+Additional app storage:
+
+- `study-tracker-data` - main app state (subjects, bullets, past papers, settings)
+- `study-tracker-components` - imported component metadata (subject-scoped)
+- `study-tracker-exam-schedule` - exam schedule items
+- `study-tracker-reminder-settings` - reminder lead times and settings
+
+## Past Paper Logging
+
+Past papers are logged using a **component-linked raw mark model**:
+
+- Select a **Component** (from imported component metadata)
+- Enter **Raw Score** and it auto-calculates **Percentage**
+- Optionally log **Duration Used** and **Notes**
+
+The Papers page displays results grouped:
+
+- Year → Session → Variant
+
+Dashboard analytics include:
+
+- Cross-subject yearly performance (best/worst year)
 
 ## How can I deploy this project?
 

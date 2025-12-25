@@ -102,15 +102,15 @@ export function StreakCounter({ streakData, className }: StreakCounterProps) {
         </TooltipContent>
       </Tooltip>
 
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-status-amber" />
             Study Streak
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 py-4">
           {/* Current Streak */}
           <div className="text-center py-4">
             <div className="text-5xl font-bold text-status-amber mb-2">

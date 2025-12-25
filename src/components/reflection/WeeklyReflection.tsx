@@ -162,8 +162,8 @@ export const WeeklyReflection = memo(function WeeklyReflection({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
             Weekly Reflection
@@ -173,7 +173,8 @@ export const WeeklyReflection = memo(function WeeklyReflection({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={currentTab} onValueChange={(v) => setCurrentTab(v as typeof currentTab)}>
+        <div className="py-4 pb-24">
+          <Tabs value={currentTab} onValueChange={(v) => setCurrentTab(v as typeof currentTab)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="new">
               <Calendar className="h-4 w-4 mr-2" />
@@ -257,95 +258,84 @@ export const WeeklyReflection = memo(function WeeklyReflection({
           </TabsContent>
 
           <TabsContent value="history" className="mt-4">
-            <ScrollArea className="h-[400px] pr-4">
-              {reflections.length === 0 ? (
-                <div className="text-center py-8">
-                  <History className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
-                  <p className="text-muted-foreground">No reflections yet</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reflections
-                    .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
-                    .map((reflection) => (
-                      <div
-                        key={reflection.id}
-                        className="border rounded-lg p-4 bg-card"
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">
-                              Week of{' '}
-                              {format(
-                                parseISO(reflection.weekStartDate),
-                                'MMMM d, yyyy'
-                              )}
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive"
-                            onClick={() => handleDelete(reflection.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+            {reflections.length === 0 ? (
+              <div className="text-center py-8">
+                <History className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-muted-foreground">No reflections yet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reflections
+                  .sort((a, b) => b.weekStartDate.localeCompare(a.weekStartDate))
+                  .map((reflection) => (
+                    <div
+                      key={reflection.id}
+                      className="border rounded-lg p-4 bg-card"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            Week of{' '}
+                            {format(parseISO(reflection.weekStartDate), 'MMMM d, yyyy')}
+                          </span>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => handleDelete(reflection.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
 
-                        {reflection.subjectTags && reflection.subjectTags.length > 0 && (
-                          <div className="flex gap-1 mb-3">
-                            {reflection.subjectTags.map((tag) => {
-                              const subject = subjects.find((s) => s.id === tag);
-                              return (
-                                <Badge key={tag} variant="secondary" className="text-xs">
-                                  {subject?.name || tag}
-                                </Badge>
-                              );
-                            })}
+                      {reflection.subjectTags && reflection.subjectTags.length > 0 && (
+                        <div className="flex gap-1 mb-3">
+                          {reflection.subjectTags.map((tag) => {
+                            const subject = subjects.find((s) => s.id === tag);
+                            return (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {subject?.name || tag}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <div className="space-y-3 text-sm">
+                        {reflection.improved && (
+                          <div>
+                            <p className="text-xs text-status-green font-medium flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              Improved
+                            </p>
+                            <p className="text-muted-foreground mt-1">{reflection.improved}</p>
                           </div>
                         )}
-
-                        <div className="space-y-3 text-sm">
-                          {reflection.improved && (
-                            <div>
-                              <p className="text-xs text-status-green font-medium flex items-center gap-1">
-                                <TrendingUp className="h-3 w-3" />
-                                Improved
-                              </p>
-                              <p className="text-muted-foreground mt-1">
-                                {reflection.improved}
-                              </p>
-                            </div>
-                          )}
-                          {reflection.slipped && (
-                            <div>
-                              <p className="text-xs text-status-amber font-medium flex items-center gap-1">
-                                <TrendingDown className="h-3 w-3" />
-                                Challenges
-                              </p>
-                              <p className="text-muted-foreground mt-1">
-                                {reflection.slipped}
-                              </p>
-                            </div>
-                          )}
-                          {reflection.adjustments && (
-                            <div>
-                              <p className="text-xs text-primary font-medium flex items-center gap-1">
-                                <Target className="h-3 w-3" />
-                                Adjustments
-                              </p>
-                              <p className="text-muted-foreground mt-1">
-                                {reflection.adjustments}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                        {reflection.slipped && (
+                          <div>
+                            <p className="text-xs text-status-amber font-medium flex items-center gap-1">
+                              <TrendingDown className="h-3 w-3" />
+                              Challenges
+                            </p>
+                            <p className="text-muted-foreground mt-1">{reflection.slipped}</p>
+                          </div>
+                        )}
+                        {reflection.adjustments && (
+                          <div>
+                            <p className="text-xs text-primary font-medium flex items-center gap-1">
+                              <Target className="h-3 w-3" />
+                              Adjustments
+                            </p>
+                            <p className="text-muted-foreground mt-1">{reflection.adjustments}</p>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                </div>
-              )}
-            </ScrollArea>
+                    </div>
+                  ))}
+              </div>
+            )}
 
             {reflections.length > 0 && (
               <div className="mt-4 pt-4 border-t">
@@ -357,8 +347,9 @@ export const WeeklyReflection = memo(function WeeklyReflection({
             )}
           </TabsContent>
         </Tabs>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

@@ -15,6 +15,8 @@ export interface Bullet {
   mainTopic: string;
   subtopic: string;
   bulletText: string;
+  topicNumber?: string;
+  outcomeNumber?: string;
   status: Status;
   comment: string;
   done: boolean;
@@ -29,19 +31,28 @@ export interface Bullet {
 export interface PastPaper {
   id: string;
   subjectId: string;
+  componentId: string;
   year: number;
-  session: 'May/June' | 'Oct/Nov' | 'Feb/Mar';
+  session: 'May/June' | 'Oct/Nov' | 'Feb/Mar' | 'Specimen';
   paper: string;
-  variant?: string;
+  variant?: '1' | '2' | '3' | '4' | '5';
+  rawScore?: number;
+  totalMarks: number;
+  percentageScore?: number;
+  durationUsed?: number;
   completed: boolean;
-  score?: number;
-  comment?: string;
+  attemptDate?: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
   // AI-ready fields (future use)
   linkedTopicIds?: string[];
   aiAnalysis?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
+
+  // Backwards-compatible aliases (older UI/components)
+  score?: number;
+  comment?: string;
 }
 
 // AI Extraction Schema (matches required JSON schema)

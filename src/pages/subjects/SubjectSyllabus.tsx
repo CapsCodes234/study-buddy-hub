@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Subject, Bullet } from '@/types';
 import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { SubjectTabs } from '@/components/layout/SubjectTabs';
 
 interface SubjectSyllabusProps {
   subject: Subject;
@@ -149,17 +150,19 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/${subject.id}`)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{subject.name} Syllabus</h1>
-          <p className="text-sm text-muted-foreground">
-            Track your topic confidence and progress
+          <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Syllabus</h1>
+          <p className="text-muted-foreground">
+            Track your syllabus coverage and confidence
           </p>
         </div>
       </div>
+
+      <SubjectTabs subjectId={subject.id} />
 
       {/* Progress Bar */}
       <Card>
@@ -175,7 +178,7 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
       </Card>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -185,14 +188,15 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
             className="pl-9"
           />
         </div>
-        <Select
-          value={filterState}
-          onValueChange={(v) => setFilterState(v as FilterState)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Select
+            value={filterState}
+            onValueChange={(v) => setFilterState(v as FilterState)}
+          >
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Topics</SelectItem>
             <SelectItem value="not_started">
@@ -209,13 +213,14 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
             </SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={expandAll}>
-            Expand All
-          </Button>
-          <Button variant="outline" size="sm" onClick={collapseAll}>
-            Collapse All
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={expandAll}>
+              Expand All
+            </Button>
+            <Button variant="outline" size="sm" onClick={collapseAll}>
+              Collapse All
+            </Button>
+          </div>
         </div>
       </div>
 

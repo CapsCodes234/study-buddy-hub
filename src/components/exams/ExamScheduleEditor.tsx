@@ -189,8 +189,8 @@ export const ExamScheduleEditor = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             Exam Schedule
@@ -200,8 +200,7 @@ export const ExamScheduleEditor = ({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6">
+        <div className="space-y-6 py-4 pb-24">
             {/* Add/Edit Form */}
             {isAdding && (
               <div className="border rounded-lg p-4 bg-muted/30">
@@ -473,10 +472,9 @@ export const ExamScheduleEditor = ({
                 </div>
               </div>
             </div>
-          </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
