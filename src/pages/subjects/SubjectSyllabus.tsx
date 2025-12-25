@@ -32,8 +32,9 @@ import {
 import { cn } from '@/lib/utils';
 import { Subject, Bullet } from '@/types';
 import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Target, Calculator, Atom, Cpu } from 'lucide-react';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
+import { useSubjectTheme } from '@/components/providers/SubjectThemeProvider';
 
 interface SubjectSyllabusProps {
   subject: Subject;
@@ -51,10 +52,19 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
+  const { isSubjectPage } = useSubjectTheme();
 
   const [searchText, setSearchText] = useState('');
   const [filterState, setFilterState] = useState<FilterState>('all');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+
+  // Subject icon mapping
+  const SUBJECT_ICONS: Record<string, React.ElementType> = {
+    math: Calculator,
+    physics: Atom,
+    it: Cpu,
+  };
+  const SubjectIcon = SUBJECT_ICONS[subject.id] || Target;
 
   // Group bullets by main topic and subtopic
   const groupedData = useMemo(() => {
@@ -148,17 +158,39 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   }, []);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="relative space-y-6 animate-fade-in min-h-[calc(100vh-4rem)]">
+      {/* Background pattern layer */}
+      {isSubjectPage && (
+        <div className="subject-bg" aria-hidden="true" />
+      )}
+      
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative z-10">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/${subject.id}`)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Syllabus</h1>
-          <p className="text-muted-foreground">
-            Track your syllabus coverage and confidence
-          </p>
+        <div className="flex items-center gap-3 flex-1">
+          {/* Subject Icon */}
+          {isSubjectPage && (
+            <div 
+              className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 subject-icon-badge"
+              style={{ 
+                backgroundColor: `hsl(var(--subject-primary) / 0.15)`,
+                border: `2px solid hsl(var(--subject-primary) / 0.3)`
+              }}
+            >
+              <SubjectIcon 
+                className="h-5 w-5" 
+                style={{ color: `hsl(var(--subject-primary))` }}
+              />
+            </div>
+          )}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Syllabus</h1>
+            <p className="text-muted-foreground">
+              Track your syllabus coverage and confidence
+            </p>
+          </div>
         </div>
       </div>
 

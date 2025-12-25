@@ -44,6 +44,8 @@ import { Label } from '@/components/ui/label';
 import { useComponents } from '@/hooks/useComponents';
 import { groupPapersByYear } from '@/lib/paperAnalytics';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
+import { useSubjectTheme } from '@/components/providers/SubjectThemeProvider';
+import { Calculator, Atom, Cpu } from 'lucide-react';
 
 interface SubjectPapersProps {
   subject: Subject;
@@ -65,6 +67,15 @@ export const SubjectPapers = memo(function SubjectPapers({
   const highlightId = searchParams.get('highlight');
   const { toast } = useToast();
   const { components } = useComponents(subject.id);
+  const { isSubjectPage } = useSubjectTheme();
+
+  // Subject icon mapping
+  const SUBJECT_ICONS: Record<string, React.ElementType> = {
+    math: Calculator,
+    physics: Atom,
+    it: Cpu,
+  };
+  const SubjectIcon = SUBJECT_ICONS[subject.id] || FileText;
 
   const [searchText, setSearchText] = useState('');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
@@ -189,17 +200,39 @@ export const SubjectPapers = memo(function SubjectPapers({
   const groupedPapers = useMemo(() => groupPapersByYear(filteredPapers), [filteredPapers]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="relative space-y-6 animate-fade-in min-h-[calc(100vh-4rem)]">
+      {/* Background pattern layer */}
+      {isSubjectPage && (
+        <div className="subject-bg" aria-hidden="true" />
+      )}
+      
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative z-10">
         <Button variant="ghost" size="icon" onClick={() => navigate(`/${subject.id}`)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Past Papers</h1>
-          <p className="text-sm text-muted-foreground">
-            Track your paper practice and scores
-          </p>
+        <div className="flex items-center gap-3 flex-1">
+          {/* Subject Icon */}
+          {isSubjectPage && (
+            <div 
+              className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0 subject-icon-badge"
+              style={{ 
+                backgroundColor: `hsl(var(--subject-primary) / 0.15)`,
+                border: `2px solid hsl(var(--subject-primary) / 0.3)`
+              }}
+            >
+              <SubjectIcon 
+                className="h-5 w-5" 
+                style={{ color: `hsl(var(--subject-primary))` }}
+              />
+            </div>
+          )}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">{subject.name} Past Papers</h1>
+            <p className="text-sm text-muted-foreground">
+              Track your paper practice and scores
+            </p>
+          </div>
         </div>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
