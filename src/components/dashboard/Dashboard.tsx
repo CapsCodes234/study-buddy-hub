@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { Subject, Bullet, PastPaper, NavigationFilters } from '@/types';
+import { Reminder } from '@/types/reminders';
 import { SubjectCard } from './SubjectCard';
 import { OverallProgressCard } from './OverallProgressCard';
 import { TodaysFocus } from './TodaysFocus';
@@ -9,8 +10,10 @@ import { WeaknessConcentrationMap } from './WeaknessConcentrationMap';
 import { PastPaperPerformanceOverview } from './PastPaperPerformanceOverview';
 import { StudyMomentumIndicator } from './StudyMomentumIndicator';
 import { ExamSimulationCard } from './ExamSimulationCard';
+import { NextActionPanel } from './NextActionPanel';
 import { AIDailyFocusCard } from '@/components/ai/AIDailyFocus';
 import { AIStudySummaryModal } from '@/components/ai/AIStudySummaryModal';
+import { UpcomingReminders } from '@/components/reminders/UpcomingReminders';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
 import { calculateSubjectProgress, calculateOverallProgress } from '@/lib/progress';
@@ -21,7 +24,7 @@ import {
   calculateMomentum,
   simulateExamReadiness,
 } from '@/lib/insights';
-import { GraduationCap, Upload, Sparkles } from 'lucide-react';
+import { GraduationCap, Sparkles, Target } from 'lucide-react';
 
 interface DashboardProps {
   subjects: Subject[];
@@ -29,9 +32,23 @@ interface DashboardProps {
   pastPapers: PastPaper[];
   aiFeaturesEnabled: boolean;
   onNavigate: (filters: NavigationFilters) => void;
+  upcomingReminders?: Reminder[];
+  onDismissReminder?: (id: string) => void;
+  onSnoozeReminder?: (id: string, minutes: number) => void;
+  onOpenReflection?: () => void;
 }
 
-export const Dashboard = memo(({ subjects, bullets, pastPapers, aiFeaturesEnabled, onNavigate }: DashboardProps) => {
+export const Dashboard = memo(({ 
+  subjects, 
+  bullets, 
+  pastPapers, 
+  aiFeaturesEnabled, 
+  onNavigate,
+  upcomingReminders = [],
+  onDismissReminder,
+  onSnoozeReminder,
+  onOpenReflection,
+}: DashboardProps) => {
   const subjectProgresses = useMemo(() => 
     subjects.map(subject => calculateSubjectProgress(subject, bullets, pastPapers)),
     [subjects, bullets, pastPapers]
@@ -98,6 +115,16 @@ export const Dashboard = memo(({ subjects, bullets, pastPapers, aiFeaturesEnable
             Generate Study Summary
           </Button>
         )}
+        {onOpenReflection && (
+          <Button
+            variant="outline"
+            onClick={onOpenReflection}
+            className="gap-2"
+          >
+            <Target className="h-4 w-4" />
+            Weekly Reflection
+          </Button>
+        )}
       </div>
 
       {/* Empty States */}
@@ -135,6 +162,36 @@ export const Dashboard = memo(({ subjects, bullets, pastPapers, aiFeaturesEnable
               pastPapers={pastPapers}
             />
           </div>
+
+          {/* Next Action Panel */}
+          <NextActionPanel
+            subjects={subjects}
+            bullets={bullets}
+            pastPapers={pastPapers}
+            onStartTopic={(bullet) => {
+              onNavigate({
+                tab: 'syllabus',
+                bulletFilters: { subjectId: bullet.subjectId, searchText: '', statusFilter: 'all', hideCompleted: false },
+                highlightId: bullet.id,
+              });
+            }}
+            onStartPaper={(paper) => {
+              onNavigate({
+                tab: 'papers',
+                paperFilters: { subjectId: paper.subjectId, year: null, completionFilter: 'all' },
+                highlightId: paper.id,
+              });
+            }}
+          />
+
+          {/* Upcoming Reminders */}
+          {upcomingReminders.length > 0 && onDismissReminder && onSnoozeReminder && (
+            <UpcomingReminders
+              reminders={upcomingReminders}
+              onDismiss={onDismissReminder}
+              onSnooze={onSnoozeReminder}
+            />
+          )}
         </>
       )}
 
