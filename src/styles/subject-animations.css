@@ -1,0 +1,373 @@
+/**
+ * Subject-Specific Animations & Patterns
+ * 
+ * Each subject has unique animations that reflect its character:
+ * - Mathematics: Precision, logic, clean transitions
+ * - Physics: Wave motion, energy, dynamic pulses
+ * - IT: Digital, tech, glitch effects
+ */
+
+/* ============================================================
+   MATHEMATICS - Precision & Logic
+   ============================================================ */
+
+@keyframes slideInPrecise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fillWithSnap {
+  0% { 
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  80% {
+    transform: scaleX(1.02);
+  }
+  100% { 
+    transform: scaleX(1);
+  }
+}
+
+@keyframes scaleSmooth {
+  from { transform: scale(1); }
+  to { transform: scale(1.02); }
+}
+
+/* ============================================================
+   PHYSICS - Wave Motion & Energy
+   ============================================================ */
+
+@keyframes waveIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseWave {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 hsl(var(--subject-primary) / 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 12px 4px hsl(var(--subject-primary) / 0.2);
+  }
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg) translateX(2px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(2px) rotate(-360deg); }
+}
+
+/* ============================================================
+   IT - Digital & Tech
+   ============================================================ */
+
+@keyframes glitchIn {
+  0% { 
+    opacity: 0; 
+    transform: translateX(-10px); 
+    filter: blur(2px); 
+  }
+  20% { 
+    opacity: 0.5; 
+    transform: translateX(5px); 
+  }
+  40% { 
+    opacity: 1; 
+    transform: translateX(-2px); 
+  }
+  60% { 
+    opacity: 1; 
+    transform: translateX(1px); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateX(0); 
+    filter: blur(0); 
+  }
+}
+
+@keyframes scanProgress {
+  0% { background-position: -200% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes digitalGlow {
+  from { 
+    box-shadow: 0 0 5px hsl(var(--subject-accent) / 0.5);
+  }
+  to { 
+    box-shadow: 0 0 15px hsl(var(--subject-accent) / 0.3), 
+                0 0 30px hsl(var(--subject-accent) / 0.1);
+  }
+}
+
+/* ============================================================
+   APPLY ANIMATIONS TO CARDS
+   ============================================================ */
+
+[data-subject-theme="math"] .subject-card {
+  animation: slideInPrecise 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+[data-subject-theme="physics"] .subject-card {
+  animation: waveIn 0.4s ease-out both;
+}
+
+[data-subject-theme="it"] .subject-card {
+  animation: glitchIn 0.5s ease-out both;
+}
+
+/* Stagger animation for multiple cards */
+[data-subject-theme] .subject-card:nth-child(1) { animation-delay: 0ms; }
+[data-subject-theme] .subject-card:nth-child(2) { animation-delay: 50ms; }
+[data-subject-theme] .subject-card:nth-child(3) { animation-delay: 100ms; }
+[data-subject-theme] .subject-card:nth-child(4) { animation-delay: 150ms; }
+[data-subject-theme] .subject-card:nth-child(5) { animation-delay: 200ms; }
+[data-subject-theme] .subject-card:nth-child(6) { animation-delay: 250ms; }
+
+/* ============================================================
+   BACKGROUND PATTERNS
+   ============================================================ */
+
+[data-subject-theme="math"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    linear-gradient(to right, hsl(var(--subject-primary) / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--subject-primary) / 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+[data-subject-theme="physics"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20px 20px, hsl(var(--subject-accent) / 0.04) 2px, transparent 2px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+[data-subject-theme="it"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      45deg, 
+      hsl(var(--subject-primary) / 0.02) 0px, 
+      hsl(var(--subject-primary) / 0.02) 1px, 
+      transparent 1px, 
+      transparent 12px
+    );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ============================================================
+   PROGRESS BAR THEMING
+   ============================================================ */
+
+[data-subject-theme="math"] .subject-progress-indicator {
+  background: linear-gradient(
+    90deg, 
+    hsl(var(--subject-primary)), 
+    hsl(var(--subject-accent))
+  );
+}
+
+[data-subject-theme="physics"] .subject-progress-indicator {
+  background: linear-gradient(
+    90deg, 
+    hsl(var(--subject-primary)), 
+    hsl(var(--subject-accent))
+  );
+  animation: pulseWave 2s ease-in-out infinite;
+}
+
+[data-subject-theme="it"] .subject-progress-indicator {
+  background: linear-gradient(
+    90deg, 
+    hsl(var(--subject-primary)), 
+    hsl(var(--subject-accent)),
+    hsl(var(--subject-primary))
+  );
+  background-size: 200% 100%;
+  animation: scanProgress 3s linear infinite;
+}
+
+/* ============================================================
+   HEADER ACCENT STYLING
+   ============================================================ */
+
+[data-subject-theme] .subject-header-accent::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg, 
+    hsl(var(--subject-primary)), 
+    hsl(var(--subject-accent))
+  );
+  animation: slideAccent 0.5s ease-out forwards;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+}
+
+@keyframes slideAccent {
+  from { width: 0; opacity: 0; }
+  to { width: 100%; opacity: 1; }
+}
+
+/* ============================================================
+   BUTTON EFFECTS
+   ============================================================ */
+
+[data-subject-theme] .subject-button {
+  transition: all 0.2s ease-out;
+}
+
+[data-subject-theme="math"] .subject-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px hsl(var(--subject-primary) / 0.2);
+}
+
+[data-subject-theme="physics"] .subject-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px hsl(var(--subject-primary) / 0.25);
+}
+
+[data-subject-theme="it"] .subject-button:hover {
+  box-shadow: 
+    0 0 8px hsl(var(--subject-accent) / 0.4),
+    0 4px 12px hsl(var(--subject-primary) / 0.2);
+}
+
+/* Button ripple effect */
+[data-subject-theme] .subject-button-ripple:active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, hsl(var(--subject-accent) / 0.3) 0%, transparent 70%);
+  animation: ripple 0.6s ease-out;
+  border-radius: inherit;
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+/* ============================================================
+   FOCUS STATES
+   ============================================================ */
+
+[data-subject-theme] *:focus-visible {
+  outline: 2px solid hsl(var(--subject-primary));
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   THEMED COMPONENTS BASE STYLES
+   ============================================================ */
+
+[data-subject-theme] .subject-themed-card {
+  border-color: hsl(var(--subject-border));
+  background-color: hsl(var(--subject-card));
+  transition: all 0.3s ease;
+}
+
+[data-subject-theme] .subject-themed-card:hover {
+  border-color: hsl(var(--subject-primary) / 0.3);
+  box-shadow: 0 4px 16px hsl(var(--subject-primary) / 0.1);
+}
+
+[data-subject-theme] .subject-themed-text {
+  color: hsl(var(--subject-text));
+}
+
+[data-subject-theme] .subject-themed-primary {
+  color: hsl(var(--subject-primary));
+}
+
+[data-subject-theme] .subject-themed-accent {
+  color: hsl(var(--subject-accent));
+}
+
+[data-subject-theme] .subject-themed-bg {
+  background-color: hsl(var(--subject-bg));
+}
+
+[data-subject-theme] .subject-themed-primary-bg {
+  background-color: hsl(var(--subject-primary));
+  color: white;
+}
+
+[data-subject-theme] .subject-themed-accent-bg {
+  background-color: hsl(var(--subject-accent));
+}
+
+/* ============================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-subject-theme] .subject-card,
+  [data-subject-theme] .subject-progress-indicator,
+  [data-subject-theme] .subject-button,
+  [data-subject-theme] .subject-header-accent::after,
+  [data-subject-theme] * {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   MOBILE OPTIMIZATIONS
+   ============================================================ */
+
+@media (max-width: 768px) {
+  [data-subject-theme] .subject-card {
+    animation-duration: 0.2s !important;
+  }
+  
+  /* Reduce background pattern intensity on mobile */
+  [data-subject-theme]::before {
+    opacity: 0.3;
+  }
+}

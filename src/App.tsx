@@ -1,5 +1,5 @@
 /**
- * Updated App with Subject Routing
+ * Updated App with Subject Routing and Per-Subject Theming
  */
 
 import { Toaster } from "@/components/ui/toaster";
@@ -8,11 +8,36 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import { SubjectThemeProvider } from "@/components/providers/SubjectThemeProvider";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ThemeDemo from "./pages/ThemeDemo";
 
 const queryClient = new QueryClient();
+
+// Wrapper component to provide subject theming within router context
+function SubjectThemedRoutes() {
+  return (
+    <SubjectThemeProvider>
+      <Routes>
+        {/* Main Routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/settings" element={<Index />} />
+        
+        {/* Subject Routes - SubjectThemeProvider reads :subjectId */}
+        <Route path="/:subjectId" element={<Index />} />
+        <Route path="/:subjectId/syllabus" element={<Index />} />
+        <Route path="/:subjectId/papers" element={<Index />} />
+        
+        {/* Utility Routes */}
+        <Route path="/theme-demo" element={<ThemeDemo />} />
+        
+        {/* Catch-all */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </SubjectThemeProvider>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -21,22 +46,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Main Routes */}
-            <Route path="/" element={<Index />} />
-            <Route path="/settings" element={<Index />} />
-            
-            {/* Subject Routes */}
-            <Route path="/:subjectId" element={<Index />} />
-            <Route path="/:subjectId/syllabus" element={<Index />} />
-            <Route path="/:subjectId/papers" element={<Index />} />
-            
-            {/* Utility Routes */}
-            <Route path="/theme-demo" element={<ThemeDemo />} />
-            
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <SubjectThemedRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>

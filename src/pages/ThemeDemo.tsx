@@ -21,6 +21,7 @@ import { useTheme } from '@/components/ui/ThemeProvider';
 import { useToast } from '@/hooks/use-toast';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { SUBJECT_THEMES, SubjectTheme } from '@/lib/subjectThemes';
 import {
   ArrowLeft,
   Sun,
@@ -40,6 +41,9 @@ import {
   Settings,
   ChevronRight,
   Zap,
+  Calculator,
+  Atom,
+  Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,7 +51,8 @@ import { cn } from '@/lib/utils';
  * Theme Demo Page
  * 
  * Showcases all UI components in both light and dark themes
- * with accessibility information and design token examples.
+ * with accessibility information, design token examples,
+ * and per-subject theme previews.
  */
 export default function ThemeDemo() {
   const { theme, setTheme, resolvedTheme, reducedMotion, setReducedMotion, highContrast, setHighContrast } = useTheme();
@@ -57,6 +62,7 @@ export default function ThemeDemo() {
   const [inputValue, setInputValue] = useState('');
   const [switchValue, setSwitchValue] = useState(false);
   const [checkboxValue, setCheckboxValue] = useState(false);
+  const [selectedSubjectTheme, setSelectedSubjectTheme] = useState<string>('math');
 
   const showToast = (variant: 'default' | 'destructive' = 'default') => {
     toast({
@@ -67,6 +73,9 @@ export default function ThemeDemo() {
       variant,
     });
   };
+
+  const subjectTheme = SUBJECT_THEMES[selectedSubjectTheme];
+  const themeColors = resolvedTheme === 'dark' ? subjectTheme?.colors.dark : subjectTheme?.colors.light;
 
   return (
     <div className="min-h-screen bg-background">
@@ -205,6 +214,162 @@ export default function ThemeDemo() {
           </div>
         </section>
 
+        {/* Subject Themes Section */}
+        <section>
+          <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Per-Subject Themes
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            Each subject has a unique visual identity with custom colors, animations, and patterns.
+            Visit a subject page (e.g., /math) to see themes in action.
+          </p>
+          
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle>Subject Theme Preview</CardTitle>
+              <CardDescription>
+                Select a subject to preview its color palette
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Subject Selector */}
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(SUBJECT_THEMES).map(([id, theme]) => {
+                  const icons: Record<string, React.ElementType> = {
+                    math: Calculator,
+                    physics: Atom,
+                    it: Cpu,
+                  };
+                  const Icon = icons[id] || BookOpen;
+                  
+                  return (
+                    <Button
+                      key={id}
+                      variant={selectedSubjectTheme === id ? 'default' : 'outline'}
+                      onClick={() => setSelectedSubjectTheme(id)}
+                      className="gap-2"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {theme.name}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Separator />
+
+              {/* Color Swatches */}
+              {themeColors && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">
+                    {subjectTheme.name} - {resolvedTheme === 'dark' ? 'Dark' : 'Light'} Mode
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {Object.entries(themeColors).map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <div 
+                          className="h-12 rounded-lg border"
+                          style={{ backgroundColor: `hsl(${value})` }}
+                        />
+                        <p className="text-xs font-medium capitalize">{key}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Preview Cards */}
+              <div className="space-y-4">
+                <h4 className="font-medium">Component Preview</h4>
+                <div 
+                  className="p-6 rounded-lg border space-y-4"
+                  style={{ 
+                    backgroundColor: `hsl(${themeColors?.background})`,
+                    borderColor: `hsl(${themeColors?.border})`,
+                  }}
+                >
+                  <div 
+                    className="p-4 rounded-lg border"
+                    style={{
+                      backgroundColor: `hsl(${themeColors?.cardBg})`,
+                      borderColor: `hsl(${themeColors?.border})`,
+                    }}
+                  >
+                    <h5 
+                      className="font-semibold mb-2"
+                      style={{ color: `hsl(${themeColors?.text})` }}
+                    >
+                      Sample Card
+                    </h5>
+                    <p 
+                      className="text-sm mb-4"
+                      style={{ color: `hsl(${themeColors?.text})` }}
+                    >
+                      This demonstrates how content looks in the {subjectTheme?.name} theme.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        style={{
+                          backgroundColor: `hsl(${themeColors?.primary})`,
+                          color: 'white',
+                        }}
+                      >
+                        Primary
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        style={{
+                          borderColor: `hsl(${themeColors?.accent})`,
+                          color: `hsl(${themeColors?.accent})`,
+                        }}
+                      >
+                        Accent
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar Preview */}
+                  <div className="space-y-2">
+                    <div 
+                      className="text-sm font-medium"
+                      style={{ color: `hsl(${themeColors?.text})` }}
+                    >
+                      Progress Example
+                    </div>
+                    <div 
+                      className="h-2 rounded-full overflow-hidden"
+                      style={{ backgroundColor: `hsl(${themeColors?.border})` }}
+                    >
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: '65%',
+                          background: `linear-gradient(90deg, hsl(${themeColors?.primary}), hsl(${themeColors?.accent}))`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Animation Info */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Animation Style: {subjectTheme?.animations.cardEntrance}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {selectedSubjectTheme === 'math' && 'Mathematics uses precise, clean slide-in animations reflecting logical precision.'}
+                  {selectedSubjectTheme === 'physics' && 'Physics uses wave-like motion animations reflecting energy and dynamics.'}
+                  {selectedSubjectTheme === 'it' && 'IT uses glitch-style animations reflecting digital/tech aesthetics.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
         {/* Status Colors Section */}
         <section>
           <h2 className="text-2xl font-semibold mb-4 flex items-center gap-2">

@@ -5,6 +5,9 @@
 /* Import theme utilities */
 @import './styles/theme.css';
 
+/* Import subject-specific animations and patterns */
+@import './styles/subject-animations.css';
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
