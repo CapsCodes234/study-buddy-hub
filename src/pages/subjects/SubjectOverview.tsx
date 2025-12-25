@@ -14,17 +14,28 @@ import {
   Clock,
   Target,
   Sparkles,
+  Upload,
+  Info,
+  Check,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ConfidenceExplanation, statusToConfidence } from '@/components/ui/ConfidenceToggle';
 import { NextActionPanel } from '@/components/dashboard/NextActionPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Subject, Bullet, PastPaper } from '@/types';
 import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
+import { generatePreview, parseCSV, type CSVImportResult } from '@/lib/csvImport';
+import { useComponents } from '@/hooks/useComponents';
 
 interface SubjectOverviewProps {
   subject: Subject;
@@ -33,6 +44,7 @@ interface SubjectOverviewProps {
   allSubjects: Subject[];
   aiFeaturesEnabled?: boolean;
   onUpdateBullet?: (id: string, updates: Partial<Bullet>) => void;
+  onAddBullets?: (bullets: Omit<Bullet, 'id' | 'createdAt' | 'updatedAt'>[]) => void;
 }
 
 export const SubjectOverview = memo(function SubjectOverview({
@@ -42,9 +54,16 @@ export const SubjectOverview = memo(function SubjectOverview({
   allSubjects,
   aiFeaturesEnabled = false,
   onUpdateBullet,
+  onAddBullets,
 }: SubjectOverviewProps) {
   const navigate = useNavigate();
   const [showExplanation, setShowExplanation] = useState(false);
+  const { toast } = useToast();
+  const { addComponents } = useComponents(subject.id);
+
+  const [previewData, setPreviewData] = useState<ReturnType<typeof generatePreview> | null>(null);
+  const [importResult, setImportResult] = useState<CSVImportResult | null>(null);
+  const [useAI, setUseAI] = useState(false);
 
   // Calculate progress stats
   const stats = useMemo(() => {
@@ -114,6 +133,101 @@ export const SubjectOverview = memo(function SubjectOverview({
     return { label: 'Getting started', color: 'text-muted-foreground', icon: '🚀' };
   }, [stats.overallProgress]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const result = parseCSV(text, subject.id);
+
+      if (result.errors.length > 0) {
+        toast({
+          title: 'Import Failed',
+          description: result.errors.join(', '),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setImportResult(result);
+      setPreviewData(generatePreview(result));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to read the CSV file.';
+      toast({
+        title: 'Import Failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const confirmImport = () => {
+    if (!importResult) return;
+    if (!onAddBullets) {
+      toast({
+        title: 'Import Failed',
+        description: 'Import is not available in the current app state.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const bulletsToAdd: Omit<Bullet, 'id' | 'createdAt' | 'updatedAt'>[] = importResult.syllabus.map((row) => ({
+        subjectId: subject.id,
+        mainTopic: row.mainTopic,
+        subtopic: row.subtopic,
+        bulletText: row.bulletText,
+        topicNumber: row.topicNumber,
+        outcomeNumber: row.outcomeNumber,
+        status: null,
+        comment: '',
+        done: false,
+      }));
+
+      if (bulletsToAdd.length > 0) {
+        onAddBullets(bulletsToAdd);
+      }
+
+      const componentsToAdd = importResult.components.map((row) => ({
+        subjectId: subject.id,
+        componentName: row.componentName,
+        paperCode: row.paperCode,
+        durationMin: row.durationMin,
+        totalMarks: row.totalMarks,
+        weightingPercent: row.weightingPercent,
+      }));
+
+      if (componentsToAdd.length > 0) {
+        addComponents(componentsToAdd);
+      }
+
+      toast({
+        title: 'Import Complete',
+        description: `Imported ${importResult.syllabus.length} topics and ${importResult.components.length} components for ${subject.name}`,
+      });
+
+      setPreviewData(null);
+      setImportResult(null);
+      void useAI;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to import data.';
+      toast({
+        title: 'Import Failed',
+        description: message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const cancelImport = () => {
+    setPreviewData(null);
+    setImportResult(null);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -160,6 +274,78 @@ export const SubjectOverview = memo(function SubjectOverview({
                 topics in progress
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Import Data for {subject.name}
+          </CardTitle>
+          <CardDescription>
+            Upload CSV to populate syllabus topics and component metadata. All data will be assigned to {subject.name}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="border-2 border-dashed rounded-lg p-6 hover:border-primary/50 transition-colors cursor-pointer">
+              <Input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="cursor-pointer"
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                <strong>For Syllabus:</strong> Main Topic, Subtopic, Bullet Point Text, Level (optional), Topic Number (optional)
+                <br />
+                <strong>For Components:</strong> Component Name, Paper Code, Duration (min), Total Marks, Weighting (%)
+              </p>
+            </div>
+
+            {previewData && (
+              <div className="space-y-3">
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Import Preview</AlertTitle>
+                  <AlertDescription>
+                    Found: <strong>{previewData.bulletCount}</strong> syllabus entries, <strong>{previewData.componentCount}</strong> components
+                  </AlertDescription>
+                </Alert>
+
+                {previewData.sampleRows.length > 0 && (
+                  <div className="text-sm space-y-1">
+                    <p className="font-medium">Sample rows:</p>
+                    {previewData.sampleRows.slice(0, 3).map((row, idx) => (
+                      <p key={idx} className="text-muted-foreground">
+                        {'mainTopic' in row ? row.mainTopic : row.componentName} → {'subtopic' in row ? row.subtopic : row.paperCode}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button onClick={confirmImport} className="flex-1">
+                    <Check className="mr-2 h-4 w-4" />
+                    Confirm Import
+                  </Button>
+                  <Button variant="outline" onClick={cancelImport} className="flex-1">
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {aiFeaturesEnabled && (
+              <div className="flex items-center justify-between p-3 border rounded">
+                <Label htmlFor="ai-extract" className="text-sm font-normal">
+                  Use AI to validate and categorize entries
+                </Label>
+                <Switch id="ai-extract" checked={useAI} onCheckedChange={setUseAI} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

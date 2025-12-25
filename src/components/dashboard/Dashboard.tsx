@@ -11,6 +11,7 @@ import { PastPaperPerformanceOverview } from './PastPaperPerformanceOverview';
 import { StudyMomentumIndicator } from './StudyMomentumIndicator';
 import { ExamSimulationCard } from './ExamSimulationCard';
 import { NextActionPanel } from './NextActionPanel';
+import { YearlyPerformanceCard } from './YearlyPerformanceCard';
 import { AIDailyFocusCard } from '@/components/ai/AIDailyFocus';
 import { AIStudySummaryModal } from '@/components/ai/AIStudySummaryModal';
 import { UpcomingReminders } from '@/components/reminders/UpcomingReminders';
@@ -161,6 +162,10 @@ export const Dashboard = memo(({
               subjects={subjects}
               pastPapers={pastPapers}
             />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <YearlyPerformanceCard papers={pastPapers} subjects={subjects} />
           </div>
 
           {/* Next Action Panel */}

@@ -25,6 +25,12 @@ export const PastPaperPerformanceOverview = memo(({
   subjects,
   pastPapers,
 }: PastPaperPerformanceOverviewProps) => {
+  const getPaperPercentage = (paper: PastPaper): number | undefined => {
+    if (paper.percentageScore !== undefined && paper.percentageScore !== null) return paper.percentageScore;
+    if (paper.score !== undefined && paper.score !== null) return paper.score;
+    return undefined;
+  };
+
   const subjectStats = useMemo(() => {
     return subjects.map(subject => {
       const subjectPapers = pastPapers.filter(p => p.subjectId === subject.id);
@@ -34,7 +40,7 @@ export const PastPaperPerformanceOverview = memo(({
 
       // Calculate average score
       const scores = completed
-        .map(p => p.score)
+        .map(getPaperPercentage)
         .filter((s): s is number => s !== undefined && s !== null);
       const averageScore = scores.length > 0
         ? scores.reduce((sum, s) => sum + s, 0) / scores.length
@@ -48,7 +54,7 @@ export const PastPaperPerformanceOverview = memo(({
       let trend: 'up' | 'down' | 'stable' = 'stable';
       if (recentPapers.length >= 2) {
         const scores = recentPapers
-          .map(p => p.score)
+          .map(getPaperPercentage)
           .filter((s): s is number => s !== undefined && s !== null);
         if (scores.length >= 2) {
           const first = scores[scores.length - 1];
@@ -81,8 +87,9 @@ export const PastPaperPerformanceOverview = memo(({
     const completionPercent = total > 0 ? (completed / total) * 100 : 0;
 
     const allScores = pastPapers
-      .filter(p => p.completed && p.score !== undefined && p.score !== null)
-      .map(p => p.score!);
+      .filter(p => p.completed)
+      .map(getPaperPercentage)
+      .filter((s): s is number => s !== undefined && s !== null);
     const averageScore = allScores.length > 0
       ? allScores.reduce((sum, s) => sum + s, 0) / allScores.length
       : undefined;

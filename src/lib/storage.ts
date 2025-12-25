@@ -183,18 +183,34 @@ export const exportBulletsAsCSV = (bullets: Bullet[], subjects: Subject[]): stri
 
 // Export past papers as CSV
 export const exportPastPapersAsCSV = (papers: PastPaper[], subjects: Subject[]): string => {
-  const headers = ['Subject', 'Year', 'Session', 'Paper', 'Variant', 'Completed', 'Score', 'Comment'];
+  const headers = [
+    'Subject',
+    'Year',
+    'Session',
+    'Paper',
+    'Variant',
+    'ComponentId',
+    'Completed',
+    'RawScore',
+    'TotalMarks',
+    'Percentage',
+    'Notes',
+  ];
   const rows = papers.map(p => {
     const subject = subjects.find(s => s.id === p.subjectId);
+    const percentage = p.percentageScore ?? p.score ?? '';
     return [
       subject?.name || p.subjectId,
       p.year,
       p.session,
       p.paper,
       p.variant || '',
+      p.componentId || '',
       p.completed ? 'Yes' : 'No',
-      p.score ?? '',
-      p.comment || '',
+      p.rawScore ?? '',
+      p.totalMarks ?? '',
+      percentage,
+      p.notes || p.comment || '',
     ].map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
   });
   return [headers.join(','), ...rows].join('\n');

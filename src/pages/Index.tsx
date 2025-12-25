@@ -190,6 +190,7 @@ const Index = () => {
             allSubjects={state.subjects}
             aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
             onUpdateBullet={handleUpdateBullet}
+            onAddBullets={addBullets}
           />
         )}
 
