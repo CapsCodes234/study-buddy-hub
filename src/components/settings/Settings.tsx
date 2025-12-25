@@ -20,6 +20,7 @@ import { useTheme } from '@/components/ui/ThemeProvider';
 import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient';
 import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
 import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
+import { SubjectThemeSettings } from './SubjectThemeSettings';
 import {
   Settings as SettingsIcon,
   Download,
@@ -227,6 +228,9 @@ export const Settings = ({
           </div>
         </CardContent>
       </Card>
+
+      {/* Subject Theme Settings */}
+      <SubjectThemeSettings />
 
       {/* AI Features Settings */}
       <Card className="glass-card">
