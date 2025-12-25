@@ -5,6 +5,8 @@
  * - Mathematics: Precision, logic, clean transitions
  * - Physics: Wave motion, energy, dynamic pulses
  * - IT: Digital, tech, glitch effects
+ * 
+ * All animations respect prefers-reduced-motion.
  */
 
 /* ============================================================
@@ -35,9 +37,15 @@
   }
 }
 
-@keyframes scaleSmooth {
-  from { transform: scale(1); }
-  to { transform: scale(1.02); }
+@keyframes gridSlideIn {
+  from {
+    opacity: 0;
+    background-position: -24px -24px;
+  }
+  to {
+    opacity: 0.6;
+    background-position: 0 0;
+  }
 }
 
 /* ============================================================
@@ -48,6 +56,9 @@
   from {
     opacity: 0;
     transform: translateY(10px) scale(0.95);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.01);
   }
   to {
     opacity: 1;
@@ -64,9 +75,23 @@
   }
 }
 
-@keyframes orbit {
-  0% { transform: rotate(0deg) translateX(2px) rotate(0deg); }
-  100% { transform: rotate(360deg) translateX(2px) rotate(-360deg); }
+@keyframes parallaxDrift {
+  from { background-position: 0 0; }
+  to { background-position: 40px 40px; }
+}
+
+@keyframes orbitGlow {
+  0% { 
+    background-position: -100% 0;
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% { 
+    background-position: 200% 0;
+    opacity: 0;
+  }
 }
 
 /* ============================================================
@@ -103,6 +128,23 @@
   100% { background-position: 200% 50%; }
 }
 
+@keyframes scanLine {
+  0% { 
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.3;
+  }
+  90% {
+    opacity: 0.3;
+  }
+  100% { 
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 @keyframes digitalGlow {
   from { 
     box-shadow: 0 0 5px hsl(var(--subject-accent) / 0.5);
@@ -110,6 +152,31 @@
   to { 
     box-shadow: 0 0 15px hsl(var(--subject-accent) / 0.3), 
                 0 0 30px hsl(var(--subject-accent) / 0.1);
+  }
+}
+
+/* ============================================================
+   SHARED KEYFRAMES
+   ============================================================ */
+
+@keyframes fadeInPattern {
+  from { opacity: 0; }
+  to { opacity: 0.6; }
+}
+
+@keyframes slideAccent {
+  from { width: 0; opacity: 0; }
+  to { width: 100%; opacity: 1; }
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
   }
 }
 
@@ -138,9 +205,10 @@
 [data-subject-theme] .subject-card:nth-child(6) { animation-delay: 250ms; }
 
 /* ============================================================
-   BACKGROUND PATTERNS
+   BACKGROUND PATTERNS - Enhanced
    ============================================================ */
 
+/* Math: Grid pattern with slide-in animation */
 [data-subject-theme="math"]::before {
   content: '';
   position: fixed;
@@ -149,14 +217,15 @@
   right: 0;
   bottom: 0;
   background: 
-    linear-gradient(to right, hsl(var(--subject-primary) / 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, hsl(var(--subject-primary) / 0.03) 1px, transparent 1px);
+    linear-gradient(to right, hsl(var(--subject-primary) / 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--subject-primary) / 0.04) 1px, transparent 1px);
   background-size: 24px 24px;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.6;
+  z-index: -1;
+  animation: gridSlideIn 0.8s ease-out forwards;
 }
 
+/* Physics: Radial dots with slow parallax scroll */
 [data-subject-theme="physics"]::before {
   content: '';
   position: fixed;
@@ -164,13 +233,15 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: radial-gradient(circle at 20px 20px, hsl(var(--subject-accent) / 0.04) 2px, transparent 2px);
+  background: radial-gradient(circle at 20px 20px, hsl(var(--subject-accent) / 0.05) 2px, transparent 2px);
   background-size: 40px 40px;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.6;
+  z-index: -1;
+  opacity: 0;
+  animation: fadeInPattern 0.6s ease-out 0.2s forwards, parallaxDrift 30s linear infinite;
 }
 
+/* IT: Diagonal circuit stripes */
 [data-subject-theme="it"]::before {
   content: '';
   position: fixed;
@@ -181,19 +252,25 @@
   background: 
     repeating-linear-gradient(
       45deg, 
-      hsl(var(--subject-primary) / 0.02) 0px, 
-      hsl(var(--subject-primary) / 0.02) 1px, 
-      transparent 1px, 
-      transparent 12px
+      hsl(var(--subject-primary) / 0.03) 0px, 
+      hsl(var(--subject-primary) / 0.03) 2px, 
+      transparent 2px, 
+      transparent 14px
     );
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.6;
+  z-index: -1;
+  opacity: 0;
+  animation: fadeInPattern 0.6s ease-out 0.2s forwards;
 }
 
 /* ============================================================
-   PROGRESS BAR THEMING
+   PROGRESS BAR THEMING - Enhanced
    ============================================================ */
+
+[data-subject-theme] .subject-progress-indicator {
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 9999px;
+}
 
 [data-subject-theme="math"] .subject-progress-indicator {
   background: linear-gradient(
@@ -201,6 +278,8 @@
     hsl(var(--subject-primary)), 
     hsl(var(--subject-accent))
   );
+  animation: fillWithSnap 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left;
 }
 
 [data-subject-theme="physics"] .subject-progress-indicator {
@@ -209,9 +288,10 @@
     hsl(var(--subject-primary)), 
     hsl(var(--subject-accent))
   );
-  animation: pulseWave 2s ease-in-out infinite;
+  animation: pulseWave 2.5s ease-in-out infinite;
 }
 
+/* IT: Scan animation on progress bars */
 [data-subject-theme="it"] .subject-progress-indicator {
   background: linear-gradient(
     90deg, 
@@ -221,11 +301,33 @@
   );
   background-size: 200% 100%;
   animation: scanProgress 3s linear infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-subject-theme="it"] .subject-progress-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    hsl(var(--subject-accent) / 0.2) 50%,
+    transparent 100%
+  );
+  animation: scanLine 2s ease-in-out infinite;
 }
 
 /* ============================================================
    HEADER ACCENT STYLING
    ============================================================ */
+
+[data-subject-theme] .subject-header-accent {
+  position: relative;
+}
 
 [data-subject-theme] .subject-header-accent::after {
   content: '';
@@ -239,20 +341,17 @@
     hsl(var(--subject-accent))
   );
   animation: slideAccent 0.5s ease-out forwards;
-  width: 100%;
+  width: 0;
   border-radius: 2px 2px 0 0;
 }
 
-@keyframes slideAccent {
-  from { width: 0; opacity: 0; }
-  to { width: 100%; opacity: 1; }
-}
-
 /* ============================================================
-   BUTTON EFFECTS
+   BUTTON EFFECTS - Enhanced
    ============================================================ */
 
 [data-subject-theme] .subject-button {
+  position: relative;
+  overflow: hidden;
   transition: all 0.2s ease-out;
 }
 
@@ -266,6 +365,26 @@
   box-shadow: 0 6px 16px hsl(var(--subject-primary) / 0.25);
 }
 
+/* Physics: Orbit glow effect on hover */
+[data-subject-theme="physics"] .subject-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    hsl(var(--subject-accent) / 0.2), 
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+[data-subject-theme="physics"] .subject-button:hover::before {
+  animation: orbitGlow 1.5s ease-in-out infinite;
+}
+
+/* IT: Digital glow effect */
 [data-subject-theme="it"] .subject-button:hover {
   box-shadow: 
     0 0 8px hsl(var(--subject-accent) / 0.4),
@@ -273,24 +392,19 @@
 }
 
 /* Button ripple effect */
-[data-subject-theme] .subject-button-ripple:active::after {
+[data-subject-theme] .subject-button-ripple::after {
   content: '';
   position: absolute;
   inset: 0;
   background: radial-gradient(circle, hsl(var(--subject-accent) / 0.3) 0%, transparent 70%);
-  animation: ripple 0.6s ease-out;
+  opacity: 0;
+  transform: scale(0);
   border-radius: inherit;
+  pointer-events: none;
 }
 
-@keyframes ripple {
-  0% {
-    opacity: 1;
-    transform: scale(0);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(2);
-  }
+[data-subject-theme] .subject-button-ripple:active::after {
+  animation: ripple 0.6s ease-out;
 }
 
 /* ============================================================
@@ -343,17 +457,65 @@
 }
 
 /* ============================================================
+   BADGE STYLING
+   ============================================================ */
+
+[data-subject-theme] .subject-badge {
+  background-color: hsl(var(--subject-primary) / 0.1);
+  color: hsl(var(--subject-primary));
+  border: 1px solid hsl(var(--subject-primary) / 0.2);
+}
+
+[data-subject-theme] .subject-badge-accent {
+  background-color: hsl(var(--subject-accent) / 0.1);
+  color: hsl(var(--subject-accent));
+  border: 1px solid hsl(var(--subject-accent) / 0.2);
+}
+
+/* ============================================================
    ACCESSIBILITY - REDUCED MOTION
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
+  [data-subject-theme]::before,
   [data-subject-theme] .subject-card,
   [data-subject-theme] .subject-progress-indicator,
+  [data-subject-theme] .subject-progress-indicator::after,
   [data-subject-theme] .subject-button,
-  [data-subject-theme] .subject-header-accent::after,
-  [data-subject-theme] * {
+  [data-subject-theme] .subject-button::before,
+  [data-subject-theme] .subject-button-ripple::after,
+  [data-subject-theme] .subject-header-accent::after {
     animation: none !important;
-    transition-duration: 0.01ms !important;
+    transition: none !important;
+  }
+  
+  /* Ensure patterns are still visible */
+  [data-subject-theme]::before {
+    opacity: 0.4 !important;
+  }
+  
+  /* Ensure header accent is visible */
+  [data-subject-theme] .subject-header-accent::after {
+    width: 100% !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ============================================================
+   HIGH CONTRAST MODE
+   ============================================================ */
+
+@media (prefers-contrast: high) {
+  [data-subject-theme]::before {
+    opacity: 0.3 !important;
+  }
+  
+  [data-subject-theme] .subject-themed-card {
+    border-width: 2px;
+  }
+  
+  [data-subject-theme] *:focus-visible {
+    outline-width: 3px;
   }
 }
 
@@ -368,6 +530,27 @@
   
   /* Reduce background pattern intensity on mobile */
   [data-subject-theme]::before {
-    opacity: 0.3;
+    opacity: 0.3 !important;
+    animation-duration: 0.3s !important;
+  }
+  
+  /* Disable parallax on mobile for performance */
+  [data-subject-theme="physics"]::before {
+    animation: fadeInPattern 0.3s ease-out forwards !important;
+  }
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+
+@media print {
+  [data-subject-theme]::before {
+    display: none !important;
+  }
+  
+  [data-subject-theme] .subject-card,
+  [data-subject-theme] .subject-progress-indicator {
+    animation: none !important;
   }
 }

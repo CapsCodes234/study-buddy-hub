@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Bullet, Subject } from '@/types';
+import { Bullet, Subject, PastPaper } from '@/types';
 
 // Mock localStorage
 const mockStorage: Record<string, string> = {};
