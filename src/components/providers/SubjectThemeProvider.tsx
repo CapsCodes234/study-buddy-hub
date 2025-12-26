@@ -97,10 +97,6 @@ export function SubjectThemeProvider({ children }: { children: React.ReactNode }
       root.style.removeProperty('--subject-card');
       root.style.removeProperty('--subject-text');
       root.style.removeProperty('--subject-border');
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[SubjectTheme] Reset - no theme applied');
-      }
       return;
     }
 
@@ -123,10 +119,6 @@ export function SubjectThemeProvider({ children }: { children: React.ReactNode }
     
     // Add data attribute for CSS targeting
     root.setAttribute('data-subject-theme', theme.id);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.debug('[SubjectTheme] Applied:', theme.id, { primary, accent, isDark });
-    }
   }, []);
 
   // Apply theme when it changes

@@ -10,6 +10,49 @@
  */
 
 /* ============================================================
+   SUBJECT BACKGROUND DIV - Primary Pattern Layer
+   ============================================================ */
+
+.subject-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15; /* Visible but subtle - adjust between 0.08-0.3 */
+  background-size: 40px 40px;
+  background-position: 0 0;
+}
+
+/* Math: Grid Pattern */
+[data-subject-theme="math"] .subject-bg {
+  background-image: 
+    linear-gradient(to right, hsl(var(--subject-primary)) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--subject-primary)) 1px, transparent 1px);
+  animation: fadeInPattern 0.6s ease-out forwards;
+}
+
+/* Physics: Radial Dots Pattern */
+[data-subject-theme="physics"] .subject-bg {
+  background-image: 
+    radial-gradient(circle at 20px 20px, hsl(var(--subject-primary)) 2px, transparent 2px);
+  background-size: 30px 30px;
+  animation: fadeInPattern 0.6s ease-out 0.2s forwards, parallaxDrift 30s linear infinite;
+}
+
+/* IT: Diagonal Stripes Pattern */
+[data-subject-theme="it"] .subject-bg {
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      hsl(var(--subject-primary)) 0px,
+      hsl(var(--subject-primary)) 1px,
+      transparent 1px,
+      transparent 10px
+    );
+  animation: fadeInPattern 0.6s ease-out 0.2s forwards;
+}
+
+/* ============================================================
    MATHEMATICS - Precision & Logic
    ============================================================ */
 
@@ -205,7 +248,7 @@
 [data-subject-theme] .subject-card:nth-child(6) { animation-delay: 250ms; }
 
 /* ============================================================
-   BACKGROUND PATTERNS - Enhanced
+   BACKGROUND PATTERNS - Enhanced (::before pseudo-elements)
    ============================================================ */
 
 /* Math: Grid pattern with slide-in animation */
@@ -477,6 +520,7 @@
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
+  .subject-bg,
   [data-subject-theme]::before,
   [data-subject-theme] .subject-card,
   [data-subject-theme] .subject-progress-indicator,
@@ -487,6 +531,11 @@
   [data-subject-theme] .subject-header-accent::after {
     animation: none !important;
     transition: none !important;
+  }
+  
+  /* Ensure .subject-bg is still visible without animation */
+  .subject-bg {
+    opacity: 0.15 !important;
   }
   
   /* Ensure patterns are still visible */
@@ -506,6 +555,10 @@
    ============================================================ */
 
 @media (prefers-contrast: high) {
+  .subject-bg {
+    opacity: 0.3 !important;
+  }
+  
   [data-subject-theme]::before {
     opacity: 0.3 !important;
   }
@@ -524,6 +577,11 @@
    ============================================================ */
 
 @media (max-width: 768px) {
+  .subject-bg {
+    opacity: 0.1 !important;
+    background-size: 30px 30px;
+  }
+  
   [data-subject-theme] .subject-card {
     animation-duration: 0.2s !important;
   }
@@ -538,6 +596,10 @@
   [data-subject-theme="physics"]::before {
     animation: fadeInPattern 0.3s ease-out forwards !important;
   }
+  
+  [data-subject-theme="physics"] .subject-bg {
+    animation: fadeInPattern 0.3s ease-out forwards !important;
+  }
 }
 
 /* ============================================================
@@ -545,6 +607,7 @@
    ============================================================ */
 
 @media print {
+  .subject-bg,
   [data-subject-theme]::before {
     display: none !important;
   }

@@ -6,9 +6,11 @@
  */
 
 import { ReactNode } from 'react';
-import { Calculator, Atom, Cpu, LucideIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calculator, Atom, Cpu, LucideIcon, ArrowLeft } from 'lucide-react';
 import { useSubjectTheme } from '@/components/providers/SubjectThemeProvider';
 import { SUBJECT_THEMES } from '@/lib/subjectThemes';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface SubjectPageWrapperProps {
@@ -33,14 +35,18 @@ export function SubjectPageWrapper({
   subtitle,
   className 
 }: SubjectPageWrapperProps) {
-  const { isSubjectPage, currentTheme } = useSubjectTheme();
+  const navigate = useNavigate();
+  const { isSubjectPage } = useSubjectTheme();
   const theme = SUBJECT_THEMES[subjectId];
   const SubjectIcon = SUBJECT_ICONS[subjectId] || Calculator;
+
+  // Fallback: if provider says no but we have a valid theme, show anyway
+  const shouldShowTheme = isSubjectPage || (!!theme && !!subjectId);
 
   return (
     <div className={cn('relative min-h-[calc(100vh-4rem)]', className)}>
       {/* Background pattern layer */}
-      {isSubjectPage && (
+      {shouldShowTheme && (
         <div 
           className="subject-bg fixed inset-0 pointer-events-none z-0"
           aria-hidden="true"
@@ -49,11 +55,21 @@ export function SubjectPageWrapper({
 
       {/* Content layer */}
       <div className="relative z-10 space-y-6 animate-fade-in">
-        {/* Page Header with Subject Icon */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex items-start gap-3">
+        {/* Page Header with Back Button and Subject Icon */}
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          {/* Back Button */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(`/${subjectId}`)}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+
+          <div className="flex items-start gap-3 flex-1">
             {/* Large Subject Icon */}
-            {isSubjectPage && theme && (
+            {shouldShowTheme && theme && (
               <div 
                 className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl shrink-0 subject-icon-badge"
                 style={{ 
@@ -70,7 +86,7 @@ export function SubjectPageWrapper({
             <div>
               <h1 
                 className="text-2xl sm:text-3xl font-bold"
-                style={isSubjectPage ? { color: `hsl(var(--subject-text))` } : undefined}
+                style={shouldShowTheme ? { color: `hsl(var(--subject-text))` } : undefined}
               >
                 {title}
               </h1>

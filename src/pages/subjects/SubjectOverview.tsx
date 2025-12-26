@@ -39,7 +39,6 @@ import { generatePreview, parseCSV, type CSVImportResult } from '@/lib/csvImport
 import { useComponents } from '@/hooks/useComponents';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
 import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
-import { useSubjectTheme } from '@/components/providers/SubjectThemeProvider';
 
 interface SubjectOverviewProps {
   subject: Subject;
@@ -64,7 +63,6 @@ export const SubjectOverview = memo(function SubjectOverview({
   const [showExplanation, setShowExplanation] = useState(false);
   const { toast } = useToast();
   const { addComponents } = useComponents(subject.id);
-  const { isSubjectPage } = useSubjectTheme();
 
   const [previewData, setPreviewData] = useState<ReturnType<typeof generatePreview> | null>(null);
   const [importResult, setImportResult] = useState<CSVImportResult | null>(null);
@@ -243,10 +241,6 @@ export const SubjectOverview = memo(function SubjectOverview({
       title={subject.name}
       subtitle={`Your command center for ${subject.name} preparation`}
     >
-      {/* Background pattern layer */}
-      {isSubjectPage && (
-        <div className="subject-bg" aria-hidden="true" />
-      )}
 
       <div className="flex items-center justify-end -mt-4 mb-4">
         <Badge variant="secondary" className={cn('text-sm py-1', paceStatus.color)}>
