@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ProgressRingProps {
@@ -8,13 +9,13 @@ interface ProgressRingProps {
   children?: React.ReactNode;
 }
 
-export const ProgressRing = ({
+export const ProgressRing = forwardRef<HTMLDivElement, ProgressRingProps>(({
   progress,
   size = 120,
   strokeWidth = 8,
   className,
   children,
-}: ProgressRingProps) => {
+}, ref) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - progress * circumference;
@@ -28,7 +29,7 @@ export const ProgressRing = ({
   };
 
   return (
-    <div className={cn('relative inline-flex items-center justify-center', className)}>
+    <div ref={ref} className={cn('relative inline-flex items-center justify-center', className)}>
       <svg
         width={size}
         height={size}
@@ -62,4 +63,6 @@ export const ProgressRing = ({
       </div>
     </div>
   );
-};
+});
+
+ProgressRing.displayName = 'ProgressRing';
