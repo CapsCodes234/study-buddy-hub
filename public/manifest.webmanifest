@@ -1,0 +1,20 @@
+{
+  "name": "Study Buddy Hub",
+  "short_name": "StudyBuddy",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1765a3",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-310.png",
+      "sizes": "310x310"
+      "type": "image/png"
+    }
+  ]
+}
