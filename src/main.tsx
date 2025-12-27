@@ -3,3 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
+import { registerSW } from "virtual:pwa-register";
+
+registerSW({ immediate: true });
+
