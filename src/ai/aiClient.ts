@@ -17,6 +17,7 @@
 import { AIProvider, AIRequestOptions, AIError } from './types';
 import { ExtractionResult } from '@/types/syllabus';
 import { SYLLABUS_EXTRACTION_SYSTEM_PROMPT, generateSyllabusExtractionPrompt } from './prompts';
+import { validateExtractedSyllabus, safeJSONParse } from '@/lib/validation';
 
 /**
  * Default AI request options
@@ -373,24 +374,44 @@ export async function extractSyllabusFromPDF(
 }
 
 /**
- * Parse JSON response from AI, handling common issues
+ * Parse JSON response from AI, handling common issues with safe parsing
  */
 export function parseAIResponse<T>(text: string): T {
   try {
+    let jsonString: string | null = null;
+    
     // Try to extract JSON from markdown code blocks
     const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[1]) as T;
+      jsonString = jsonMatch[1];
     }
 
     // Try to find JSON object in the text
-    const objectMatch = text.match(/\{[\s\S]*\}/);
-    if (objectMatch) {
-      return JSON.parse(objectMatch[0]) as T;
+    if (!jsonString) {
+      const objectMatch = text.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        jsonString = objectMatch[0];
+      }
     }
 
-    // Try direct JSON parse
-    return JSON.parse(text) as T;
+    // Fallback to direct text
+    if (!jsonString) {
+      jsonString = text;
+    }
+
+    // Use safe JSON parse to prevent prototype pollution
+    const parsed = safeJSONParse<T>(jsonString);
+    if (parsed === null) {
+      throw new Error('Invalid JSON structure');
+    }
+
+    // For syllabus extraction, validate the structure
+    const syllabusValidation = validateExtractedSyllabus(parsed);
+    if (syllabusValidation) {
+      return syllabusValidation as T;
+    }
+
+    return parsed;
   } catch (error) {
     throw new AIError(
       `Failed to parse AI response: ${error instanceof Error ? error.message : 'Invalid JSON'}`,
