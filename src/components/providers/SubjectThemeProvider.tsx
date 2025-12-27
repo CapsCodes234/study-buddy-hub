@@ -6,7 +6,7 @@
  * corresponding theme colors via CSS custom properties.
  */
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { SUBJECT_THEMES, SubjectTheme, hasSubjectTheme } from '@/lib/subjectThemes';
 
@@ -49,9 +49,67 @@ function loadThemeOverrides(): ThemeOverrides {
   }
 }
 
+/**
+ * Apply theme CSS variables to document root
+ */
+function applyThemeToDOM(theme: SubjectTheme | null, themeOverrides: ThemeOverrides) {
+  const root = document.documentElement;
+  
+  if (!theme) {
+    // Reset to default theme - clear all subject-specific CSS vars
+    root.removeAttribute('data-subject-theme');
+    root.style.removeProperty('--subject-primary');
+    root.style.removeProperty('--subject-accent');
+    root.style.removeProperty('--subject-bg');
+    root.style.removeProperty('--subject-card');
+    root.style.removeProperty('--subject-text');
+    root.style.removeProperty('--subject-border');
+    console.debug('[SubjectTheme] Cleared theme');
+    return;
+  }
+
+  const isDark = root.classList.contains('dark');
+  const colors = isDark ? theme.colors.dark : theme.colors.light;
+  
+  // Get overrides for this subject
+  const subjectOverrides = themeOverrides[theme.id] || {};
+  
+  // Set CSS custom properties with HSL values, applying overrides
+  const primary = subjectOverrides.primary || colors.primary;
+  const accent = subjectOverrides.accent || colors.accent;
+  
+  root.style.setProperty('--subject-primary', primary);
+  root.style.setProperty('--subject-accent', accent);
+  root.style.setProperty('--subject-bg', colors.background);
+  root.style.setProperty('--subject-card', colors.cardBg);
+  root.style.setProperty('--subject-text', colors.text);
+  root.style.setProperty('--subject-border', colors.border);
+  
+  // Add data attribute for CSS targeting
+  root.setAttribute('data-subject-theme', theme.id);
+  
+  console.debug('[SubjectTheme] Applied:', theme.id, { primary, accent, isDark });
+}
+
 export function SubjectThemeProvider({ children }: { children: React.ReactNode }) {
   const { subjectId } = useParams<{ subjectId: string }>();
   const location = useLocation();
+  const previousSubjectIdRef = useRef<string | undefined>(undefined);
+  
+  // Determine if we're on a valid subject page - computed FIRST for immediate use
+  const isValidSubject = !!subjectId && hasSubjectTheme(subjectId);
+  
+  // Apply theme IMMEDIATELY on first render (synchronously)
+  if (isValidSubject && typeof document !== 'undefined') {
+    const root = document.documentElement;
+    if (root.getAttribute('data-subject-theme') !== subjectId) {
+      const storedEnabled = localStorage.getItem(STORAGE_KEY);
+      if (storedEnabled !== 'false') {
+        const overrides = loadThemeOverrides();
+        applyThemeToDOM(SUBJECT_THEMES[subjectId], overrides);
+      }
+    }
+  }
   
   // Load theme preference from localStorage
   const [themeEnabled, setThemeEnabled] = useState(() => {
@@ -81,62 +139,17 @@ export function SubjectThemeProvider({ children }: { children: React.ReactNode }
     };
   }, []);
 
+  // Determine if we're on a valid subject page
   const isSubjectPage = !!subjectId && hasSubjectTheme(subjectId);
   const currentTheme = isSubjectPage && themeEnabled ? SUBJECT_THEMES[subjectId] : null;
 
-  // Apply theme CSS variables to document root
-  const applyTheme = useCallback((theme: SubjectTheme | null, themeOverrides: ThemeOverrides) => {
-    const root = document.documentElement;
-    
-    if (!theme) {
-      // Reset to default theme
-      root.removeAttribute('data-subject-theme');
-      root.style.removeProperty('--subject-primary');
-      root.style.removeProperty('--subject-accent');
-      root.style.removeProperty('--subject-bg');
-      root.style.removeProperty('--subject-card');
-      root.style.removeProperty('--subject-text');
-      root.style.removeProperty('--subject-border');
-      return;
-    }
-
-    const isDark = root.classList.contains('dark');
-    const colors = isDark ? theme.colors.dark : theme.colors.light;
-    
-    // Get overrides for this subject
-    const subjectOverrides = themeOverrides[theme.id] || {};
-    
-    // Set CSS custom properties with HSL values, applying overrides
-    const primary = subjectOverrides.primary || colors.primary;
-    const accent = subjectOverrides.accent || colors.accent;
-    
-    root.style.setProperty('--subject-primary', primary);
-    root.style.setProperty('--subject-accent', accent);
-    root.style.setProperty('--subject-bg', colors.background);
-    root.style.setProperty('--subject-card', colors.cardBg);
-    root.style.setProperty('--subject-text', colors.text);
-    root.style.setProperty('--subject-border', colors.border);
-    
-    // Add data attribute for CSS targeting
-    root.setAttribute('data-subject-theme', theme.id);
-  }, []);
-
-  // Apply theme when it changes
+  // Apply theme when it changes - NO cleanup on route change within subjects
   useEffect(() => {
-    applyTheme(currentTheme, overrides);
-
-    return () => {
-      // Cleanup on unmount
-      const root = document.documentElement;
-      root.removeAttribute('data-subject-theme');
-      root.style.removeProperty('--subject-primary');
-      root.style.removeProperty('--subject-accent');
-      root.style.removeProperty('--subject-bg');
-      root.style.removeProperty('--subject-card');
-      root.style.removeProperty('--subject-text');
-      root.style.removeProperty('--subject-border');
-    };
-  }, [currentTheme, overrides, location.pathname, applyTheme]);
+    applyThemeToDOM(currentTheme, overrides);
+    previousSubjectIdRef.current = subjectId;
+    
+    // Only cleanup when component TRULY unmounts (not on re-render)
+  }, [currentTheme, overrides, subjectId]);
 
   // Observe dark mode changes and reapply theme
   useEffect(() => {
@@ -146,7 +159,7 @@ export function SubjectThemeProvider({ children }: { children: React.ReactNode }
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.attributeName === 'class') {
-          applyTheme(currentTheme, overrides);
+          applyThemeToDOM(currentTheme, overrides);
         }
       });
     });
@@ -154,7 +167,15 @@ export function SubjectThemeProvider({ children }: { children: React.ReactNode }
     observer.observe(root, { attributes: true });
     
     return () => observer.disconnect();
-  }, [currentTheme, overrides, applyTheme]);
+  }, [currentTheme, overrides]);
+
+  // Clear theme ONLY when navigating away from all subject pages
+  useEffect(() => {
+    if (!isSubjectPage && previousSubjectIdRef.current) {
+      // We were on a subject page, now we're not - clear the theme
+      applyThemeToDOM(null, {});
+    }
+  }, [isSubjectPage]);
 
   const toggleTheme = useCallback(() => {
     setThemeEnabled((prev) => {
