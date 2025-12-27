@@ -85,7 +85,7 @@ export const ExamScheduleEditor = ({
 
   // Form state for adding/editing
   const [formSubjectId, setFormSubjectId] = useState('');
-  const [formComponentId, setFormComponentId] = useState('');
+  const [formComponentId, setFormComponentId] = useState('all');
   const [formExamType, setFormExamType] = useState<ExamType>('main');
   const [formDate, setFormDate] = useState('');
   const [formTitle, setFormTitle] = useState('');
@@ -100,7 +100,7 @@ export const ExamScheduleEditor = ({
 
   const resetForm = () => {
     setFormSubjectId('');
-    setFormComponentId('');
+    setFormComponentId('all');
     setFormExamType('main');
     setFormDate('');
     setFormTitle('');
@@ -117,7 +117,7 @@ export const ExamScheduleEditor = ({
 
     const newExam = addExamToSchedule({
       subjectId: formSubjectId,
-      componentId: formComponentId || undefined,
+      componentId: formComponentId === 'all' ? undefined : formComponentId,
       examType: formExamType,
       date: formDate,
       title: formTitle || undefined,
@@ -134,7 +134,7 @@ export const ExamScheduleEditor = ({
 
     updateExamInSchedule(editingId, {
       subjectId: formSubjectId,
-      componentId: formComponentId || undefined,
+      componentId: formComponentId === 'all' ? undefined : formComponentId,
       examType: formExamType,
       date: formDate,
       title: formTitle || undefined,
@@ -147,7 +147,7 @@ export const ExamScheduleEditor = ({
           ? {
               ...e,
               subjectId: formSubjectId,
-              componentId: formComponentId || undefined,
+              componentId: formComponentId === 'all' ? undefined : formComponentId,
               examType: formExamType,
               date: formDate,
               title: formTitle || undefined,
@@ -170,7 +170,7 @@ export const ExamScheduleEditor = ({
   const startEdit = (exam: ExamScheduleItem) => {
     setEditingId(exam.id);
     setFormSubjectId(exam.subjectId);
-    setFormComponentId(exam.componentId || '');
+    setFormComponentId(exam.componentId || 'all');
     setFormExamType(exam.examType);
     setFormDate(exam.date.split('T')[0]);
     setFormTitle(exam.title || '');
@@ -235,7 +235,7 @@ export const ExamScheduleEditor = ({
                         <SelectValue placeholder="All components" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Components</SelectItem>
+                        <SelectItem value="all">All Components</SelectItem>
                         {subjectComponents.map((comp) => (
                           <SelectItem key={comp.id} value={comp.id}>
                             {comp.name}
