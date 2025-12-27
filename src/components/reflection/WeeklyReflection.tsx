@@ -60,7 +60,7 @@ interface WeeklyReflectionProps {
   subjects: Subject[];
 }
 
-export const WeeklyReflection = memo(function WeeklyReflection({
+export const WeeklyReflection = memo(function WeeklyReflectionComponent({
   open,
   onOpenChange,
   subjects,

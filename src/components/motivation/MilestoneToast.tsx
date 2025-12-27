@@ -31,7 +31,7 @@ interface MilestoneToastProps {
   streakDays: number;
 }
 
-export const MilestoneToast = memo(function MilestoneToast({
+export const MilestoneToast = memo(function MilestoneToastComponent({
   subjects,
   bullets,
   pastPapers,
