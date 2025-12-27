@@ -128,13 +128,14 @@ export const useAppState = () => {
     setState(newState);
   }, []);
 
-  const clearAllData = useCallback(() => {
+  const clearAllData = useCallback((redirectTo?: string) => {
     // Nuclear wipe: clear all persistence layers and reload clean.
     // We set loading to prevent any stale state from being saved during teardown.
     setIsLoading(true);
     void (async () => {
       await clearAllAppData();
-      window.location.reload();
+      // Redirect to specified path (default: dashboard) to show onboarding
+      window.location.href = redirectTo ?? '/';
     })();
   }, []);
 
