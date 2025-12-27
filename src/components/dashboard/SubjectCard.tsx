@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, forwardRef } from 'react';
 import { Subject, SubjectProgress, NavigationFilters } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProgressRing } from '@/components/ui/progress-ring';
@@ -14,7 +14,7 @@ interface SubjectCardProps {
   onNavigate: (filters: NavigationFilters) => void;
 }
 
-export const SubjectCard = memo(({ subject, progress, className, style, onNavigate }: SubjectCardProps) => {
+export const SubjectCard = memo(forwardRef<HTMLDivElement, SubjectCardProps>(({ subject, progress, className, style, onNavigate }, ref) => {
   const combinedProgress = (progress.syllabusProgress + progress.pastPaperProgress) / 2;
 
   const handleRedClick = (e: React.MouseEvent) => {
@@ -54,7 +54,7 @@ export const SubjectCard = memo(({ subject, progress, className, style, onNaviga
   };
 
   return (
-    <Card className={cn('glass-card overflow-hidden', className)} style={style}>
+    <Card ref={ref} className={cn('glass-card overflow-hidden', className)} style={style}>
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <span
@@ -151,6 +151,6 @@ export const SubjectCard = memo(({ subject, progress, className, style, onNaviga
       </CardContent>
     </Card>
   );
-});
+}));
 
 SubjectCard.displayName = 'SubjectCard';
