@@ -13,6 +13,7 @@
  */
 
 import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
+import { safeJSONParse, sanitizeText, validateCSVBullet, appStateSchema } from '@/lib/validation';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -36,19 +37,37 @@ export const getInitialState = (): AppState => ({
   settings: DEFAULT_SETTINGS,
 });
 
-// Load data from localStorage
+// Load data from localStorage with safe JSON parsing
 export const loadData = (): AppState => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored);
+      // Use safe JSON parse to prevent prototype pollution
+      const parsed = safeJSONParse<Record<string, unknown>>(stored);
+      if (!parsed) {
+        console.error('Failed to parse stored data safely');
+        return getInitialState();
+      }
+      
+      // Validate against schema
+      const validation = appStateSchema.safeParse(parsed);
+      if (validation.success) {
+        return {
+          subjects: validation.data.subjects.length > 0 ? validation.data.subjects as Subject[] : DEFAULT_SUBJECTS,
+          bullets: validation.data.bullets as Bullet[],
+          pastPapers: validation.data.pastPapers as PastPaper[],
+          settings: { ...DEFAULT_SETTINGS, ...validation.data.settings },
+        };
+      }
+      
+      // Fallback: partial recovery for legacy data
       const parsedSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : undefined;
-      const subjects = parsedSubjects && parsedSubjects.length > 0 ? parsedSubjects : DEFAULT_SUBJECTS;
+      const subjects = parsedSubjects && parsedSubjects.length > 0 ? parsedSubjects as Subject[] : DEFAULT_SUBJECTS;
       return {
         subjects,
-        bullets: parsed.bullets || [],
-        pastPapers: parsed.pastPapers || [],
-        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+        bullets: Array.isArray(parsed.bullets) ? parsed.bullets as Bullet[] : [],
+        pastPapers: Array.isArray(parsed.pastPapers) ? parsed.pastPapers as PastPaper[] : [],
+        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings as Partial<AppSettings> || {}) },
       };
     }
   } catch (error) {
@@ -216,18 +235,26 @@ export const exportPastPapersAsCSV = (papers: PastPaper[], subjects: Subject[]):
   return [headers.join(','), ...rows].join('\n');
 };
 
-// Import bullets from CSV
+// Import bullets from CSV with validation and sanitization
 export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bullet[] => {
+  // Validate input size (max 5MB of CSV data)
+  if (csvString.length > 5 * 1024 * 1024) {
+    throw new Error('CSV file is too large. Maximum size is 5MB.');
+  }
+
   const lines = csvString.split(/\r?\n/).filter(line => line.trim());
   if (lines.length < 2) return [];
+  
+  // Limit number of rows to prevent DoS
+  const MAX_ROWS = 10000;
+  if (lines.length > MAX_ROWS) {
+    throw new Error(`CSV has too many rows (${lines.length}). Maximum is ${MAX_ROWS}.`);
+  }
 
   const bullets: Bullet[] = [];
   const now = new Date().toISOString();
 
   // Header-based parsing so externally-generated syllabus CSVs work.
-  // Mapping: `learning_outcome` (or app-exported `Bullet`) -> Bullet.bulletText
-  //          `main_topic` (or app-exported `Main Topic`) -> Bullet.mainTopic
-  //          `subtopic` (or app-exported `Subtopic`) -> Bullet.subtopic
   const headerCells = parseCSVLine(lines[0]);
   const headerIndex = buildHeaderIndex(headerCells);
 
@@ -238,7 +265,7 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     const cells = parseCSVLine(lines[i]);
     if (cells.length === 0) continue;
 
-    const outcomeText = getCellByHeader(cells, headerIndex, [
+    const rawOutcomeText = getCellByHeader(cells, headerIndex, [
       'learning_outcome',
       'learning outcome',
       'outcome',
@@ -248,29 +275,41 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     ]);
 
     // If there's no learning_outcome text, this row does not represent a bullet point.
-    if (!outcomeText.trim()) continue;
+    if (!rawOutcomeText.trim()) continue;
 
-    const mainTopic = getCellByHeader(cells, headerIndex, ['main_topic', 'main topic', 'topic', 'maintopic']);
-    const subtopic = getCellByHeader(cells, headerIndex, ['subtopic', 'sub topic', 'sub_topic']);
-
-    // Subject resolution is import-scoped and locked:
-    // - If any row specifies a subject, we lock that subject for the entire import.
-    // - The import must never write to more than one subject.
+    const rawMainTopic = getCellByHeader(cells, headerIndex, ['main_topic', 'main topic', 'topic', 'maintopic']);
+    const rawSubtopic = getCellByHeader(cells, headerIndex, ['subtopic', 'sub topic', 'sub_topic']);
     const subjectNameOrId = getCellByHeader(cells, headerIndex, ['subject', 'subject_id', 'subjectid']);
+
+    // Validate and sanitize the bullet data
+    const validated = validateCSVBullet({
+      bulletText: rawOutcomeText,
+      mainTopic: rawMainTopic,
+      subtopic: rawSubtopic,
+      subjectId: '',
+    });
+
+    if (!validated) {
+      console.warn(`Skipping invalid row ${i + 1}: validation failed`);
+      continue;
+    }
+
+    // Subject resolution is import-scoped and locked
     if (subjectNameOrId.trim()) {
-      const resolved = resolveSubject(subjectNameOrId, subjects);
+      const sanitizedSubject = sanitizeText(subjectNameOrId, 100);
+      const resolved = resolveSubject(sanitizedSubject, subjects);
       if (!resolved) {
-        throw new Error(`Unknown subject: "${subjectNameOrId}". Please create/select the subject first or fix the CSV subject column.`);
+        throw new Error(`Unknown subject: "${sanitizedSubject}". Please create/select the subject first or fix the CSV subject column.`);
       }
       if (!lockedSubject) {
         lockedSubject = resolved;
-        lockedSubjectRaw = subjectNameOrId;
+        lockedSubjectRaw = sanitizedSubject;
         bullets.forEach(b => {
           if (!b.subjectId) b.subjectId = lockedSubject!.id;
         });
       } else if (lockedSubject.id !== resolved.id) {
         throw new Error(
-          `CSV contains multiple subjects (e.g. "${lockedSubjectRaw}" and "${subjectNameOrId}"). A single import must target exactly one subject.`,
+          `CSV contains multiple subjects (e.g. "${lockedSubjectRaw}" and "${sanitizedSubject}"). A single import must target exactly one subject.`,
         );
       }
     }
@@ -278,9 +317,9 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     bullets.push({
       id: `bullet-${Date.now()}-${i}`,
       subjectId: lockedSubject?.id || '',
-      mainTopic: mainTopic || '',
-      subtopic: subtopic || '',
-      bulletText: outcomeText,
+      mainTopic: validated.mainTopic,
+      subtopic: validated.subtopic,
+      bulletText: validated.bulletText,
       status: null,
       comment: '',
       done: false,
@@ -290,7 +329,6 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
   }
 
   if (bullets.length > 0 && !lockedSubject) {
-    // If the CSV didn't specify a subject, we refuse to guess when multiple subjects exist.
     if (subjects.length === 1) {
       bullets.forEach(b => {
         b.subjectId = subjects[0].id;
