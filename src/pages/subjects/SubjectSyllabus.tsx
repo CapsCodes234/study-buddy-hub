@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import {
   Select,
   SelectContent,
@@ -219,8 +219,7 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
       </div>
 
       {/* Topics List */}
-      <ScrollArea className="h-[calc(100vh-350px)]">
-        <div className="space-y-3 pr-4">
+      <div className="space-y-3 pb-8">
           {Object.keys(groupedData).length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
@@ -304,8 +303,7 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
               </Card>
             ))
           )}
-        </div>
-      </ScrollArea>
+      </div>
     </SubjectPageWrapper>
   );
 });

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -442,8 +442,7 @@ export const SubjectPapers = memo(function SubjectPapers({
       </div>
 
       {/* Papers List */}
-      <ScrollArea className="h-[calc(100vh-400px)]">
-        <div className="space-y-6 pr-4">
+      <div className="space-y-6 pb-8">
           {groupedPapers.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
@@ -545,8 +544,7 @@ export const SubjectPapers = memo(function SubjectPapers({
               </Card>
             ))
           )}
-        </div>
-      </ScrollArea>
+      </div>
     </SubjectPageWrapper>
   );
 });
