@@ -206,10 +206,10 @@ export function validateExtractionResult(data: unknown): data is ExtractionResul
 export function getDefaultComponents(subjectName: string): Partial<SubjectComponent>[] {
   const defaults: Record<string, Partial<SubjectComponent>[]> = {
     'Mathematics': [
-      { name: 'Paper 1 (Pure Mathematics)', totalMarks: 75, orderNumber: 1 },
-      { name: 'Paper 2 (Pure Mathematics)', totalMarks: 75, orderNumber: 2 },
-      { name: 'Paper 3 (Statistics)', totalMarks: 75, orderNumber: 3 },
-      { name: 'Paper 4 (Mechanics)', totalMarks: 50, orderNumber: 4 },
+      { name: 'Paper 1 (Pure Mathematics 1)', totalMarks: 75, orderNumber: 1 },
+      { name: 'Paper 3 (Pure Mathematics 3)', totalMarks: 75, orderNumber: 2 },
+      { name: 'Paper 4 (Mechanics)', totalMarks: 50, orderNumber: 3 },
+      { name: 'Paper 5 (Statistics)', totalMarks: 50, orderNumber: 4 },
     ],
     'Physics': [
       { name: 'Paper 1 (Multiple Choice)', totalMarks: 40, orderNumber: 1 },
@@ -219,8 +219,8 @@ export function getDefaultComponents(subjectName: string): Partial<SubjectCompon
       { name: 'Paper 5 (Planning/Analysis)', totalMarks: 30, orderNumber: 5 },
     ],
     'Information Technology': [
-      { name: 'Paper 1 (Theory)', totalMarks: 90, orderNumber: 1 },
-      { name: 'Paper 2 (Practical)', totalMarks: 90, orderNumber: 2 },
+      { name: 'Paper 3 (Adv. Theory)', totalMarks: 70, orderNumber: 1 },
+      { name: 'Paper 4 (Adv. Practical)', totalMarks: 90, orderNumber: 2 },
     ],
   };
   
