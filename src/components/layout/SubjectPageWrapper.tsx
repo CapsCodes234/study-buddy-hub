@@ -36,12 +36,16 @@ export function SubjectPageWrapper({
   className 
 }: SubjectPageWrapperProps) {
   const navigate = useNavigate();
-  const { isSubjectPage } = useSubjectTheme();
+  const { isSubjectPage, currentTheme } = useSubjectTheme();
   const theme = SUBJECT_THEMES[subjectId];
   const SubjectIcon = SUBJECT_ICONS[subjectId] || Calculator;
 
   // Fallback: if provider says no but we have a valid theme, show anyway
   const shouldShowTheme = isSubjectPage || (!!theme && !!subjectId);
+  
+  // Get direct colors for fallback (in case CSS vars aren't set yet)
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const themeColors = theme ? (isDark ? theme.colors.dark : theme.colors.light) : null;
 
   return (
     <div className={cn('relative min-h-[calc(100vh-4rem)]', className)}>
@@ -69,24 +73,24 @@ export function SubjectPageWrapper({
 
           <div className="flex items-start gap-3 flex-1">
             {/* Large Subject Icon */}
-            {shouldShowTheme && theme && (
+            {shouldShowTheme && themeColors && (
               <div 
                 className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl shrink-0 subject-icon-badge"
                 style={{ 
-                  backgroundColor: `hsl(var(--subject-primary) / 0.15)`,
-                  border: `2px solid hsl(var(--subject-primary) / 0.3)`
+                  backgroundColor: `hsl(${themeColors.primary} / 0.15)`,
+                  border: `2px solid hsl(${themeColors.primary} / 0.3)`
                 }}
               >
                 <SubjectIcon 
                   className="h-6 w-6 sm:h-7 sm:w-7" 
-                  style={{ color: `hsl(var(--subject-primary))` }}
+                  style={{ color: `hsl(${themeColors.primary})` }}
                 />
               </div>
             )}
             <div>
               <h1 
                 className="text-2xl sm:text-3xl font-bold"
-                style={shouldShowTheme ? { color: `hsl(var(--subject-text))` } : undefined}
+                style={shouldShowTheme && themeColors ? { color: `hsl(${themeColors.text})` } : undefined}
               >
                 {title}
               </h1>
