@@ -267,7 +267,7 @@ export const Settings = ({
                 AI features are <strong>advisory only</strong> and never modify your data.
               </p>
               <p>
-                To use AI features, set <code className="font-mono bg-muted px-1 rounded">VITE_AI_API_KEY</code> in your environment.
+                To use AI features, set <code className="font-mono bg-muted px-1 rounded">OPENROUTER_API_KEY</code> in your environment.
                 See the README for setup instructions.
               </p>
             </div>
@@ -356,7 +356,7 @@ export const Settings = ({
                   <p className="mb-1">To enable AI extraction:</p>
                   <ol className="list-decimal list-inside space-y-0.5">
                     <li>Create <code className="bg-muted px-1 rounded">.env.local</code></li>
-                    <li>Add <code className="bg-muted px-1 rounded">VITE_AI_API_KEY=your_key</code></li>
+                    <li>Add <code className="bg-muted px-1 rounded">OPENROUTER_API_KEY=your_key</code></li>
                     <li>Set <code className="bg-muted px-1 rounded">VITE_AI_PROVIDER=openrouter</code></li>
                   </ol>
                 </>
