@@ -6,15 +6,15 @@ This document summarizes security considerations and client-side API key handlin
 
 ## Client-Side API Keys
 
-### AI API Key (`OPENROUTER_API_KEY`)
+### AI API Key (`VITE_AI_API_KEY`)
 
 **Location:** `src/ai/aiClient.ts` (lines 275-276, 312-313)
 
 **Status:** ⚠️ Intentionally client-side for local-first personal use
 
 **Current Behavior:**
-- API key is loaded via `import.meta.env.OPENROUTER_API_KEY`
-- Used for OpenRouter API calls for syllabus extraction and AI summaries
+- API key is loaded via `import.meta.env.VITE_AI_API_KEY`
+- Used for OpenRouter/OpenAI API calls for syllabus extraction and AI summaries
 - Key is stored in user's browser environment (`.env.local`)
 
 **Why This Is Acceptable (for this app):**
@@ -32,8 +32,8 @@ If this app were to become multi-tenant or deployed as a service, you MUST:
 
 | File | Variables | Purpose |
 |------|-----------|---------|
-| `src/ai/aiClient.ts` | `OPENROUTER_API_KEY`, `VITE_AI_PROVIDER` | AI provider configuration |
-| `src/ai/summarizer.ts` | `OPENROUTER_API_KEY` | Error messages |
+| `src/ai/aiClient.ts` | `VITE_AI_API_KEY`, `VITE_AI_PROVIDER` | AI provider configuration |
+| `src/ai/summarizer.ts` | `VITE_AI_API_KEY` | Error messages |
 | `src/components/settings/Settings.tsx` | `VITE_AI_PROVIDER` | Display current provider |
 
 ---
@@ -96,10 +96,10 @@ If deploying as a multi-user service:
    serve(async (req) => {
      const { messages } = await req.json();
      const API_KEY = Deno.env.get("AI_API_KEY"); // Server-side only
-     // ... proxy to OpenRouter
+     // ... proxy to OpenRouter/OpenAI
    });
    ```
-3. Remove `OPENROUTER_API_KEY` from client code
+3. Remove `VITE_AI_API_KEY` from client code
 4. Update `aiClient.ts` to call the Edge Function instead
 5. Add user authentication before allowing AI access
 

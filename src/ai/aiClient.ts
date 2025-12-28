@@ -1,11 +1,17 @@
 /**
- * AI Client - OpenRouter Interface
+ * AI Client - Provider-Agnostic Interface
  * 
- * This module provides interface for OpenRouter AI provider.
+ * This module provides a unified interface for AI providers.
+ * 
+ * DEFAULT PROVIDER: OpenRouter (VITE_AI_PROVIDER=openrouter)
+ * 
+ * To switch to OpenAI:
+ * 1. Set VITE_AI_PROVIDER=openai in .env.local
+ * 2. Set VITE_AI_API_KEY to your OpenAI API key
  * 
  * Environment Variables:
- * - OPENROUTER_API_KEY: Your OpenRouter API key (required)
- * - VITE_AI_PROVIDER: 'openrouter' (default) | 'mock'
+ * - VITE_AI_API_KEY: Your API key (required for real extraction)
+ * - VITE_AI_PROVIDER: 'openrouter' (default) | 'openai' | 'mock'
  */
 
 import { AIProvider, AIRequestOptions, AIError } from './types';
@@ -267,7 +273,7 @@ class MockAIProvider implements AIProvider {
  * Get the current AI provider based on environment configuration
  */
 export function getAIProvider(): AIProvider | null {
-  const openrouterApiKey = import.meta.env.OPENROUTER_API_KEY;
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
   const providerName = (import.meta.env.VITE_AI_PROVIDER || 'openrouter') as string;
 
   // If explicitly set to mock, use mock provider
@@ -275,21 +281,18 @@ export function getAIProvider(): AIProvider | null {
     return new MockAIProvider();
   }
 
-  // Require OpenRouter API key
-  if (!openrouterApiKey) {
-    throw new AIError(
-      'OpenRouter API key not configured. Please set OPENROUTER_API_KEY in your environment.',
-      'API_ERROR'
-    );
+  // If no API key, return null (caller should handle fallback)
+  if (!apiKey) {
+    return null;
   }
 
-  // Only allow OpenRouter provider
-  if (providerName === 'openrouter') {
-    return new OpenAICompatibleProvider(openrouterApiKey, 'openrouter');
+  // Use the appropriate provider
+  if (providerName === 'openai' || providerName === 'openrouter') {
+    return new OpenAICompatibleProvider(apiKey, providerName);
   }
 
   // Default to OpenRouter
-  return new OpenAICompatibleProvider(openrouterApiKey, 'openrouter');
+  return new OpenAICompatibleProvider(apiKey, 'openrouter');
 }
 
 /**
@@ -304,11 +307,11 @@ export function getAIProviderWithFallback(): { provider: AIProvider; isMock: boo
 }
 
 /**
- * Check if AI is configured (has valid OpenRouter API key)
+ * Check if AI is configured (has valid API key)
  */
 export function isAIConfigured(): boolean {
-  const openrouterApiKey = import.meta.env.OPENROUTER_API_KEY;
-  return Boolean(openrouterApiKey && openrouterApiKey.length > 0);
+  const apiKey = import.meta.env.VITE_AI_API_KEY;
+  return Boolean(apiKey && apiKey.length > 0);
 }
 
 /**
@@ -422,12 +425,12 @@ export function parseAIResponse<T>(text: string): T {
  * Create AI Provider instance (for custom configurations)
  */
 export function createAIProvider(
-  provider: 'openrouter' | 'mock' = 'mock',
+  provider: 'openrouter' | 'openai' | 'mock' = 'mock',
   apiKey?: string
 ): AIProvider {
   if (provider === 'mock' || !apiKey) {
     return new MockAIProvider();
   }
 
-  return new OpenAICompatibleProvider(apiKey, 'openrouter');
+  return new OpenAICompatibleProvider(apiKey, provider);
 }

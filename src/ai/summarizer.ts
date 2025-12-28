@@ -58,7 +58,7 @@ export async function generateStudySummary(
   
   if (!provider) {
     throw new AIError(
-      'AI provider not configured. Please set OPENROUTER_API_KEY in your environment.',
+      'AI provider not configured. Please set VITE_AI_API_KEY in your environment.',
       'API_ERROR'
     );
   }
@@ -123,7 +123,7 @@ export async function generateDailyFocus(
   
   if (!provider) {
     throw new AIError(
-      'AI provider not configured. Please set OPENROUTER_API_KEY in your environment.',
+      'AI provider not configured. Please set VITE_AI_API_KEY in your environment.',
       'API_ERROR'
     );
   }

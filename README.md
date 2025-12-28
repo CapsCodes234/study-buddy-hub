@@ -43,11 +43,11 @@ This app supports AI-powered syllabus extraction from PDF files. The AI features
 Create a `.env.local` file in the project root:
 
 ```env
-# AI Provider: 'openrouter' (default) or 'mock'
+# AI Provider: 'openrouter' (default) or 'openai'
 VITE_AI_PROVIDER=openrouter
 
-# Your OpenRouter API key
-OPENROUTER_API_KEY=your_openrouter_api_key_here
+# Your API key
+VITE_AI_API_KEY=your_api_key_here
 ```
 
 ### Supported Providers
@@ -57,7 +57,12 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
    - Uses `google/gemini-2.0-flash-001` model by default
    - Set a monthly credit limit to control costs
 
-2. **Mock Provider**: For development without API keys
+2. **OpenAI**: Higher-capacity models
+   - Set `VITE_AI_PROVIDER=openai`
+   - Uses `gpt-4o-mini` by default
+   - Get API key from [platform.openai.com](https://platform.openai.com)
+
+3. **Mock Provider**: For development without API keys
    - Set `VITE_AI_PROVIDER=mock`
    - Returns sample extraction data
 
