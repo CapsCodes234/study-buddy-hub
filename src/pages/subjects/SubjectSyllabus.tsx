@@ -1,17 +1,16 @@
 /**
  * Subject Syllabus Page
- * Per-subject syllabus tracking with confidence toggles
+ * Per-subject syllabus tracking with TopicCard dropdown and NotesPanel
  */
 
-import { memo, useMemo, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, BookOpen, Check, RotateCcw } from 'lucide-react';
+import { memo, useMemo, useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, Filter, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-
 import {
   Select,
   SelectContent,
@@ -24,17 +23,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import {
-  ConfidenceToggle,
-  statusToConfidence,
-  confidenceToStatus,
-} from '@/components/ui/ConfidenceToggle';
+import { statusToConfidence, confidenceToStatus } from '@/components/ui/ConfidenceToggle';
+import { TopicCard } from '@/components/syllabus/TopicCard';
+import { NotesPanel } from '@/components/syllabus/NotesPanel';
+import { SyncStatusIndicator } from '@/components/syllabus/SyncStatusIndicator';
 import { cn } from '@/lib/utils';
 import { Subject, Bullet } from '@/types';
 import { ConfidenceState, CONFIDENCE_CONFIG } from '@/types/reminders';
-import { ChevronDown, ChevronRight, Target } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
 import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
+import { addToSyncQueue } from '@/lib/syncQueue';
+import { toast } from '@/hooks/use-toast';
 
 interface SubjectSyllabusProps {
   subject: Subject;
@@ -49,15 +49,42 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   bullets,
   onUpdateBullet,
 }: SubjectSyllabusProps) {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
 
   const [searchText, setSearchText] = useState('');
   const [filterState, setFilterState] = useState<FilterState>('all');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  
+  // Notes panel state
+  const [notesPanelOpen, setNotesPanelOpen] = useState(false);
+  const [selectedBullet, setSelectedBullet] = useState<Bullet | null>(null);
 
-  // SubjectPageWrapper supplies header, icon and back button
+  // Keyboard shortcut for notes panel (N key when a bullet is focused)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'n' || e.key === 'N') {
+        // Only trigger if not in an input
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          // Find the focused bullet card and open its notes
+          const focused = document.activeElement?.closest('[id^="bullet-"]');
+          if (focused) {
+            const bulletId = focused.id.replace('bullet-', '');
+            const bullet = bullets.find((b) => b.id === bulletId);
+            if (bullet) {
+              e.preventDefault();
+              setSelectedBullet(bullet);
+              setNotesPanelOpen(true);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [bullets]);
 
   // Group bullets by main topic and subtopic
   const groupedData = useMemo(() => {
@@ -122,10 +149,57 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
     };
   }, [bullets, subject.id]);
 
-  const handleConfidenceChange = useCallback(
+  const handleStatusChange = useCallback(
     (bulletId: string, newConfidence: ConfidenceState) => {
       const { status, done } = confidenceToStatus(newConfidence);
-      onUpdateBullet(bulletId, { status: status as 'Red' | 'Amber' | 'Green' | null, done });
+      
+      // Optimistic update
+      onUpdateBullet(bulletId, {
+        status: status as 'Red' | 'Amber' | 'Green' | null,
+        done,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Queue for sync (for offline support)
+      if (!navigator.onLine) {
+        addToSyncQueue({
+          type: 'status',
+          bulletId,
+          payload: { status, done },
+        });
+      }
+    },
+    [onUpdateBullet]
+  );
+
+  const handleOpenNotes = useCallback((bullet: Bullet) => {
+    setSelectedBullet(bullet);
+    setNotesPanelOpen(true);
+  }, []);
+
+  const handleCloseNotes = useCallback(() => {
+    setNotesPanelOpen(false);
+    // Keep selectedBullet for animation, clear after transition
+    setTimeout(() => {
+      if (!notesPanelOpen) setSelectedBullet(null);
+    }, 300);
+  }, [notesPanelOpen]);
+
+  const handleSaveNotes = useCallback(
+    async (bulletId: string, notes: string) => {
+      onUpdateBullet(bulletId, {
+        comment: notes,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Queue for sync if offline
+      if (!navigator.onLine) {
+        addToSyncQueue({
+          type: 'notes',
+          bulletId,
+          payload: { notes },
+        });
+      }
     },
     [onUpdateBullet]
   );
@@ -163,9 +237,12 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
         <CardContent className="py-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Syllabus Progress</span>
-            <span className="text-sm text-muted-foreground">
-              {overallStats.confident} / {overallStats.total} confident
-            </span>
+            <div className="flex items-center gap-3">
+              <SyncStatusIndicator />
+              <span className="text-sm text-muted-foreground">
+                {overallStats.confident} / {overallStats.total} confident
+              </span>
+            </div>
           </div>
           <Progress value={overallStats.progress} className="h-2" />
         </CardContent>
@@ -191,22 +268,22 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Topics</SelectItem>
-            <SelectItem value="not_started">
-              {CONFIDENCE_CONFIG.not_started.emoji} Not Started
-            </SelectItem>
-            <SelectItem value="in_progress">
-              {CONFIDENCE_CONFIG.in_progress.emoji} In Progress
-            </SelectItem>
-            <SelectItem value="confident">
-              {CONFIDENCE_CONFIG.confident.emoji} Confident
-            </SelectItem>
-            <SelectItem value="needs_revision">
-              {CONFIDENCE_CONFIG.needs_revision.emoji} Needs Revision
-            </SelectItem>
-          </SelectContent>
-        </Select>
+            <SelectContent className="bg-popover border shadow-lg z-50">
+              <SelectItem value="all">All Topics</SelectItem>
+              <SelectItem value="not_started">
+                {CONFIDENCE_CONFIG.not_started.emoji} Not Started
+              </SelectItem>
+              <SelectItem value="in_progress">
+                {CONFIDENCE_CONFIG.in_progress.emoji} In Progress
+              </SelectItem>
+              <SelectItem value="confident">
+                {CONFIDENCE_CONFIG.confident.emoji} Confident
+              </SelectItem>
+              <SelectItem value="needs_revision">
+                {CONFIDENCE_CONFIG.needs_revision.emoji} Needs Revision
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={expandAll}>
               Expand All
@@ -220,90 +297,83 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
 
       {/* Topics List */}
       <div className="space-y-3 pb-8">
-          {Object.keys(groupedData).length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="font-semibold mb-2">No topics found</h3>
-                <p className="text-sm text-muted-foreground">
-                  {searchText || filterState !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'Import syllabus data to get started'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(groupedData).map(([mainTopic, data]) => (
-              <Card key={mainTopic} className="overflow-hidden">
-                <Collapsible
-                  open={expandedTopics.has(mainTopic)}
-                  onOpenChange={() => toggleTopic(mainTopic)}
-                >
-                  <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {expandedTopics.has(mainTopic) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                          <CardTitle className="text-base">{mainTopic}</CardTitle>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {data.stats.confident}/{data.stats.total}
-                          </Badge>
-                          <Progress
-                            value={(data.stats.confident / data.stats.total) * 100}
-                            className="w-20 h-2"
-                          />
+        {Object.keys(groupedData).length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold mb-2">No topics found</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchText || filterState !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Import syllabus data to get started'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          Object.entries(groupedData).map(([mainTopic, data]) => (
+            <Card key={mainTopic} className="overflow-hidden">
+              <Collapsible
+                open={expandedTopics.has(mainTopic)}
+                onOpenChange={() => toggleTopic(mainTopic)}
+              >
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {expandedTopics.has(mainTopic) ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        <CardTitle className="text-base">{mainTopic}</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {data.stats.confident}/{data.stats.total}
+                        </Badge>
+                        <Progress
+                          value={(data.stats.confident / data.stats.total) * 100}
+                          className="w-20 h-2"
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0 space-y-4">
+                    {Object.entries(data.subtopics).map(([subtopic, bulletItems]) => (
+                      <div key={subtopic} className="space-y-2">
+                        <h4 className="text-sm font-medium text-muted-foreground">
+                          {subtopic}
+                        </h4>
+                        <div className="space-y-2">
+                          {bulletItems.map((bullet) => (
+                            <TopicCard
+                              key={bullet.id}
+                              bullet={bullet}
+                              onStatusChange={handleStatusChange}
+                              onOpenNotes={handleOpenNotes}
+                              isHighlighted={bullet.id === highlightId}
+                            />
+                          ))}
                         </div>
                       </div>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0 space-y-4">
-                      {Object.entries(data.subtopics).map(([subtopic, bulletItems]) => (
-                        <div key={subtopic} className="space-y-2">
-                          <h4 className="text-sm font-medium text-muted-foreground">
-                            {subtopic}
-                          </h4>
-                          <div className="space-y-1">
-                            {bulletItems.map((bullet) => {
-                              const confidence = statusToConfidence(bullet.status, bullet.done);
-                              const isHighlighted = bullet.id === highlightId;
-
-                              return (
-                                <div
-                                  key={bullet.id}
-                                  id={`bullet-${bullet.id}`}
-                                  className={cn(
-                                    'flex items-center gap-3 p-2 rounded-lg transition-all',
-                                    isHighlighted
-                                      ? 'bg-primary/10 ring-2 ring-primary'
-                                      : 'hover:bg-muted/50'
-                                  )}
-                                >
-                                  <ConfidenceToggle
-                                    value={confidence}
-                                    onChange={(v) => handleConfidenceChange(bullet.id, v)}
-                                    size="sm"
-                                  />
-                                  <span className="text-sm flex-1">{bullet.bulletText}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </CollapsibleContent>
-                </Collapsible>
-              </Card>
-            ))
-          )}
+                    ))}
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+          ))
+        )}
       </div>
+
+      {/* Notes Panel */}
+      <NotesPanel
+        bullet={selectedBullet}
+        isOpen={notesPanelOpen}
+        onClose={handleCloseNotes}
+        onSave={handleSaveNotes}
+      />
     </SubjectPageWrapper>
   );
 });
