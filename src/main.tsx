@@ -2,8 +2,14 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
-import { registerSW } from "virtual:pwa-register";
+// Register PWA service worker
+if ('serviceWorker' in navigator) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true });
+  }).catch(() => {
+    // PWA registration failed, continue without it
+  });
+}
 
-registerSW({ immediate: true });
+createRoot(document.getElementById("root")!).render(<App />);
 
