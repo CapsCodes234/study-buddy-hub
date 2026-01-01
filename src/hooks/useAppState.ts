@@ -139,6 +139,32 @@ export const useAppState = () => {
     })();
   }, []);
 
+  // Clear data for a specific subject only (bullets, papers, theme overrides)
+  const clearSubjectData = useCallback((subjectId: string) => {
+    setState(prev => ({
+      ...prev,
+      bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
+      pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
+    }));
+    
+    // Clear subject theme overrides from localStorage
+    try {
+      const THEME_OVERRIDES_KEY = 'subject-theme-overrides';
+      const stored = localStorage.getItem(THEME_OVERRIDES_KEY);
+      if (stored) {
+        const overrides = JSON.parse(stored);
+        if (overrides[subjectId]) {
+          delete overrides[subjectId];
+          localStorage.setItem(THEME_OVERRIDES_KEY, JSON.stringify(overrides));
+          // Notify theme provider of changes
+          window.dispatchEvent(new CustomEvent('subject-theme-updated'));
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
   return {
     state,
     isLoading,
@@ -157,5 +183,6 @@ export const useAppState = () => {
     // State operations
     importState,
     clearAllData,
+    clearSubjectData,
   };
 };

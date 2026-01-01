@@ -49,6 +49,7 @@ const Index = () => {
     updateSettings,
     importState,
     clearAllData,
+    clearSubjectData,
   } = useAppState();
 
   // Determine current view based on route
@@ -200,6 +201,7 @@ const Index = () => {
             onUpdateSettings={updateSettings}
             onImportState={importState}
             onClearData={clearAllData}
+            onClearSubjectData={clearSubjectData}
           />
         )}
 

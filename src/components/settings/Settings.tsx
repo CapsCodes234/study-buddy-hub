@@ -44,6 +44,7 @@ interface SettingsProps {
   onUpdateSettings: (updates: Partial<AppState['settings']>) => void;
   onImportState: (state: AppState) => void;
   onClearData: () => void;
+  onClearSubjectData?: (subjectId: string) => void;
 }
 
 export const Settings = ({
@@ -51,11 +52,14 @@ export const Settings = ({
   onUpdateSettings,
   onImportState,
   onClearData,
+  onClearSubjectData,
 }: SettingsProps) => {
   const { toast } = useToast();
   const { theme, setTheme, reducedMotion, setReducedMotion, highContrast, setHighContrast } = useTheme();
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [subjectClearModalOpen, setSubjectClearModalOpen] = useState(false);
+  const [pendingSubjectClear, setPendingSubjectClear] = useState<{ id: string; name: string } | null>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiTestMessage, setAiTestMessage] = useState('');
@@ -140,6 +144,29 @@ export const Settings = ({
   const handleConfirmReset = () => {
     onClearData();
     toast({ title: 'Data cleared', description: 'All data has been deleted.' });
+  };
+
+  const handleClearSubjectClick = (subjectId: string, subjectName: string) => {
+    setPendingSubjectClear({ id: subjectId, name: subjectName });
+    setSubjectClearModalOpen(true);
+  };
+
+  const handleConfirmSubjectClear = () => {
+    if (pendingSubjectClear && onClearSubjectData) {
+      onClearSubjectData(pendingSubjectClear.id);
+      toast({ 
+        title: `Cleared ${pendingSubjectClear.name} data`,
+        description: 'Topics and past papers for this subject have been deleted.'
+      });
+    }
+    setPendingSubjectClear(null);
+  };
+
+  // Get counts per subject
+  const getSubjectCounts = (subjectId: string) => {
+    const topicCount = state.bullets.filter(b => b.subjectId === subjectId).length;
+    const paperCount = state.pastPapers.filter(p => p.subjectId === subjectId).length;
+    return { topicCount, paperCount };
   };
 
   return (
@@ -507,6 +534,50 @@ export const Settings = ({
               Clear Data
             </Button>
           </div>
+
+          <Separator />
+
+          {/* Per-Subject Data Clearing */}
+          {onClearSubjectData && (
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium">Clear Data by Subject</p>
+                <p className="text-xs text-muted-foreground">
+                  Delete topics and past papers for a specific subject only
+                </p>
+              </div>
+              <div className="space-y-2">
+                {state.subjects.map((subject) => {
+                  const { topicCount, paperCount } = getSubjectCounts(subject.id);
+                  const hasData = topicCount > 0 || paperCount > 0;
+                  
+                  return (
+                    <div 
+                      key={subject.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{subject.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {topicCount} topic{topicCount !== 1 ? 's' : ''} · {paperCount} paper{paperCount !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleClearSubjectClick(subject.id, subject.name)}
+                        disabled={!hasData}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -579,6 +650,17 @@ export const Settings = ({
         cancelLabel="Cancel"
         variant="destructive"
         onConfirm={handleConfirmReset}
+      />
+
+      <ConfirmationModal
+        open={subjectClearModalOpen}
+        onOpenChange={setSubjectClearModalOpen}
+        title={`Clear ${pendingSubjectClear?.name} data?`}
+        description={`This will permanently delete all topics and past paper logs for ${pendingSubjectClear?.name}. This cannot be undone.`}
+        confirmLabel="Yes, clear"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleConfirmSubjectClear}
       />
     </div>
   );
