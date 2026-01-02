@@ -8,13 +8,16 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAppState } from '@/hooks/useAppState';
 import { useReminders } from '@/hooks/useReminders';
 import { Header } from '@/components/layout/Header';
+import { lazy, Suspense } from 'react';
 import { OnboardingModal } from '@/components/layout/OnboardingModal';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { Settings } from '@/components/settings/Settings';
-import { SubjectOverview } from '@/pages/subjects/SubjectOverview';
-import { SubjectSyllabus } from '@/pages/subjects/SubjectSyllabus';
-import { SubjectPapers } from '@/pages/subjects/SubjectPapers';
-import Exams from '@/pages/Exams';
+
+// Lazy load heavy components for code splitting
+const SubjectOverview = lazy(() => import('@/pages/subjects/SubjectOverview').then(m => ({ default: m.default })));
+const SubjectSyllabus = lazy(() => import('@/pages/subjects/SubjectSyllabus').then(m => ({ default: m.default })));
+const SubjectPapers = lazy(() => import('@/pages/subjects/SubjectPapers').then(m => ({ default: m.default })));
+const Exams = lazy(() => import('@/pages/Exams'));
 import { MilestoneToast } from '@/components/motivation/MilestoneToast';
 import { WeeklyReflection } from '@/components/reflection/WeeklyReflection';
 import { NavigationFilters } from '@/types';
@@ -206,36 +209,44 @@ const Index = () => {
         )}
 
         {currentView === 'exams' && (
-          <Exams subjects={state.subjects} />
+          <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+            <Exams subjects={state.subjects} />
+          </Suspense>
         )}
 
         {currentView === 'subject_overview' && currentSubject && (
-          <SubjectOverview
-            subject={currentSubject}
-            bullets={state.bullets}
-            pastPapers={state.pastPapers}
-            allSubjects={state.subjects}
-            aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
-            onUpdateBullet={handleUpdateBullet}
-            onAddBullets={addBullets}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+            <SubjectOverview
+              subject={currentSubject}
+              bullets={state.bullets}
+              pastPapers={state.pastPapers}
+              allSubjects={state.subjects}
+              aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
+              onUpdateBullet={handleUpdateBullet}
+              onAddBullets={addBullets}
+            />
+          </Suspense>
         )}
 
         {currentView === 'subject_syllabus' && currentSubject && (
-          <SubjectSyllabus
-            subject={currentSubject}
-            bullets={state.bullets}
-            onUpdateBullet={handleUpdateBullet}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+            <SubjectSyllabus
+              subject={currentSubject}
+              bullets={state.bullets}
+              onUpdateBullet={handleUpdateBullet}
+            />
+          </Suspense>
         )}
 
         {currentView === 'subject_papers' && currentSubject && (
-          <SubjectPapers
-            subject={currentSubject}
-            pastPapers={state.pastPapers}
-            onAddPaper={addPastPaper}
-            onUpdatePaper={handleUpdatePaper}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+            <SubjectPapers
+              subject={currentSubject}
+              pastPapers={state.pastPapers}
+              onAddPaper={addPastPaper}
+              onUpdatePaper={handleUpdatePaper}
+            />
+          </Suspense>
         )}
       </main>
 

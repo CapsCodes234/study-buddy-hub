@@ -33,6 +33,20 @@ export const sanitizeString = (value: string): string => {
 };
 
 /**
+ * Sanitize CSV cell value to prevent formula injection
+ * Strips leading =, +, -, @, \t, \r characters that could be interpreted as formulas
+ */
+export const sanitizeCSVCell = (value: string): string => {
+  if (typeof value !== 'string') return '';
+  
+  // Remove formula injection prefixes: =, +, -, @, tab, carriage return
+  // This prevents CSV injection attacks when data is exported and opened in Excel/Sheets
+  const sanitized = value.replace(/^[=+\-@\t\r]/, '');
+  
+  return sanitizeString(sanitized);
+};
+
+/**
  * Sanitize and validate text with length limit
  */
 export const sanitizeText = (value: unknown, maxLength = MAX_TEXT_LENGTH): string => {

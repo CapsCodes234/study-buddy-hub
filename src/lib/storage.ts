@@ -13,7 +13,7 @@
  */
 
 import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
-import { safeJSONParse, sanitizeText, validateCSVBullet, appStateSchema } from '@/lib/validation';
+import { safeJSONParse, sanitizeText, sanitizeCSVCell, validateCSVBullet, appStateSchema } from '@/lib/validation';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -281,11 +281,17 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     const rawSubtopic = getCellByHeader(cells, headerIndex, ['subtopic', 'sub topic', 'sub_topic']);
     const subjectNameOrId = getCellByHeader(cells, headerIndex, ['subject', 'subject_id', 'subjectid']);
 
+    // Sanitize CSV cells to prevent formula injection
+    const sanitizedOutcomeText = sanitizeCSVCell(rawOutcomeText);
+    const sanitizedMainTopic = sanitizeCSVCell(rawMainTopic);
+    const sanitizedSubtopic = sanitizeCSVCell(rawSubtopic);
+    const sanitizedSubjectNameOrId = sanitizeCSVCell(subjectNameOrId);
+
     // Validate and sanitize the bullet data
     const validated = validateCSVBullet({
-      bulletText: rawOutcomeText,
-      mainTopic: rawMainTopic,
-      subtopic: rawSubtopic,
+      bulletText: sanitizedOutcomeText,
+      mainTopic: sanitizedMainTopic,
+      subtopic: sanitizedSubtopic,
       subjectId: '',
     });
 
@@ -295,8 +301,8 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     }
 
     // Subject resolution is import-scoped and locked
-    if (subjectNameOrId.trim()) {
-      const sanitizedSubject = sanitizeText(subjectNameOrId, 100);
+    if (sanitizedSubjectNameOrId.trim()) {
+      const sanitizedSubject = sanitizeText(sanitizedSubjectNameOrId, 100);
       const resolved = resolveSubject(sanitizedSubject, subjects);
       if (!resolved) {
         throw new Error(`Unknown subject: "${sanitizedSubject}". Please create/select the subject first or fix the CSV subject column.`);
@@ -312,6 +318,7 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
           `CSV contains multiple subjects (e.g. "${lockedSubjectRaw}" and "${sanitizedSubject}"). A single import must target exactly one subject.`,
         );
       }
+      lockedSubjectRaw = sanitizedSubject;
     }
 
     bullets.push({

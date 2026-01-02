@@ -3,12 +3,19 @@
  * Uses pdfjs-dist to extract text content from PDF files
  */
 
-import * as pdfjsLib from 'pdfjs-dist';
+// Lazy load pdfjs-dist to reduce initial bundle size
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
 
-// Set up the worker for pdfjs - use CDN for worker
-if (typeof window !== 'undefined') {
-  // Use unpkg CDN for the worker - more reliable than cdnjs
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+async function loadPdfJs() {
+  if (!pdfjsLib) {
+    pdfjsLib = await import('pdfjs-dist');
+    // Set up the worker for pdfjs - use CDN for worker
+    if (typeof window !== 'undefined' && pdfjsLib) {
+      // Use unpkg CDN for the worker - more reliable than cdnjs
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+    }
+  }
+  return pdfjsLib;
 }
 
 /**
@@ -16,8 +23,9 @@ if (typeof window !== 'undefined') {
  */
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
+    const pdfjs = await loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     
     let fullText = '';
     
