@@ -162,17 +162,24 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
 
     let completedChapters = 0;
     const chapterDetails = new Map<string, { total: number; confident: number; isComplete: boolean }>();
+    // Stable array representation for useEffect dependencies (avoids Map identity issues)
+    const completionStates: Array<[string, boolean]> = [];
     
     for (const [topic, stats] of chapterMap) {
       const isComplete = stats.total > 0 && stats.confident === stats.total;
       if (isComplete) completedChapters++;
       chapterDetails.set(topic, { ...stats, isComplete });
+      completionStates.push([topic, isComplete]);
     }
+    
+    // Sort by topic name for stable ordering
+    completionStates.sort((a, b) => a[0].localeCompare(b[0]));
 
     return {
       totalChapters: chapterMap.size,
       completedChapters,
       chapterDetails,
+      completionStates, // Stable array for useEffect
       progress: chapterMap.size > 0 ? (completedChapters / chapterMap.size) * 100 : 0,
     };
   }, [bullets, subject.id]);
@@ -194,14 +201,15 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   useEffect(() => {
     const currentStates = new Map<string, boolean>();
     
-    for (const [topic, details] of chapterStats.chapterDetails) {
-      currentStates.set(topic, details.isComplete);
+    for (const [topic, isComplete] of chapterStats.completionStates) {
+      currentStates.set(topic, isComplete);
       
       const wasComplete = prevChapterStatesRef.current.get(topic);
-      const isNowComplete = details.isComplete;
+      const isNowComplete = isComplete;
       
-      // Only celebrate if: was not complete -> now complete, and not already celebrated
-      if (wasComplete === false && isNowComplete && !isChapterCelebrated(subject.id, topic)) {
+      // Only celebrate if: was not complete (undefined or false) -> now complete, and not already celebrated
+      // This handles both undefined->true (first time) and false->true transitions
+      if (wasComplete !== true && isNowComplete && !isChapterCelebrated(subject.id, topic)) {
         markChapterCelebrated(subject.id, topic);
         toast({
           title: getRandomCelebrationMessage(topic),
@@ -211,7 +219,7 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
     }
     
     prevChapterStatesRef.current = currentStates;
-  }, [chapterStats.chapterDetails, subject.id]);
+  }, [chapterStats.completionStates, subject.id]);
 
   const handleStatusChange = useCallback(
     (bulletId: string, newConfidence: ConfidenceState) => {
@@ -299,19 +307,30 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
       {/* Chapter Progress Card */}
       <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
         <CardContent className="py-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-primary" />
-              <span className="text-sm font-semibold">Chapters Completed</span>
+          {chapterStats.totalChapters === 0 ? (
+            <div className="text-center py-2">
+              <BookOpen className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No chapters yet. Import syllabus data to get started.
+              </p>
             </div>
-            <span className="text-lg font-bold text-primary">
-              {chapterStats.completedChapters} / {chapterStats.totalChapters}
-            </span>
-          </div>
-          <Progress value={chapterStats.progress} className="h-2.5" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Complete all topics in a chapter to mark it as done
-          </p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-semibold">Chapters Completed</span>
+                </div>
+                <span className="text-lg font-bold text-primary">
+                  {chapterStats.completedChapters} / {chapterStats.totalChapters}
+                </span>
+              </div>
+              <Progress value={chapterStats.progress} className="h-2.5" />
+              <p className="text-xs text-muted-foreground mt-2">
+                Complete all topics in a chapter to mark it as done
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
 
