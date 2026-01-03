@@ -3,9 +3,9 @@
  * Per-subject syllabus tracking with TopicCard dropdown and NotesPanel
  */
 
-import { memo, useMemo, useState, useCallback, useEffect } from 'react';
+import { memo, useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Filter, BookOpen } from 'lucide-react';
+import { Search, Filter, BookOpen, Trophy, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +35,11 @@ import { SubjectTabs } from '@/components/layout/SubjectTabs';
 import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
 import { addToSyncQueue } from '@/lib/syncQueue';
 import { toast } from '@/hooks/use-toast';
+import {
+  isChapterCelebrated,
+  markChapterCelebrated,
+  getRandomCelebrationMessage,
+} from '@/lib/chapterCompletion';
 
 interface SubjectSyllabusProps {
   subject: Subject;
@@ -86,6 +91,9 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [bullets]);
 
+  // Track previous chapter completion states for celebration detection
+  const prevChapterStatesRef = useRef<Map<string, boolean>>(new Map());
+
   // Group bullets by main topic and subtopic
   const groupedData = useMemo(() => {
     const subjectBullets = bullets.filter((b) => b.subjectId === subject.id);
@@ -136,6 +144,39 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
     return grouped;
   }, [bullets, subject.id, searchText, filterState]);
 
+  // Calculate chapter completion stats (unfiltered, for accuracy)
+  const chapterStats = useMemo(() => {
+    const subjectBullets = bullets.filter((b) => b.subjectId === subject.id);
+    
+    // Group by mainTopic for chapter stats
+    const chapterMap = new Map<string, { total: number; confident: number }>();
+    
+    subjectBullets.forEach((bullet) => {
+      const existing = chapterMap.get(bullet.mainTopic) || { total: 0, confident: 0 };
+      existing.total++;
+      if (statusToConfidence(bullet.status, bullet.done) === 'confident') {
+        existing.confident++;
+      }
+      chapterMap.set(bullet.mainTopic, existing);
+    });
+
+    let completedChapters = 0;
+    const chapterDetails = new Map<string, { total: number; confident: number; isComplete: boolean }>();
+    
+    for (const [topic, stats] of chapterMap) {
+      const isComplete = stats.total > 0 && stats.confident === stats.total;
+      if (isComplete) completedChapters++;
+      chapterDetails.set(topic, { ...stats, isComplete });
+    }
+
+    return {
+      totalChapters: chapterMap.size,
+      completedChapters,
+      chapterDetails,
+      progress: chapterMap.size > 0 ? (completedChapters / chapterMap.size) * 100 : 0,
+    };
+  }, [bullets, subject.id]);
+
   // Calculate overall stats
   const overallStats = useMemo(() => {
     const subjectBullets = bullets.filter((b) => b.subjectId === subject.id);
@@ -148,6 +189,29 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
       progress: subjectBullets.length > 0 ? (confident / subjectBullets.length) * 100 : 0,
     };
   }, [bullets, subject.id]);
+
+  // Check for newly completed chapters and celebrate
+  useEffect(() => {
+    const currentStates = new Map<string, boolean>();
+    
+    for (const [topic, details] of chapterStats.chapterDetails) {
+      currentStates.set(topic, details.isComplete);
+      
+      const wasComplete = prevChapterStatesRef.current.get(topic);
+      const isNowComplete = details.isComplete;
+      
+      // Only celebrate if: was not complete -> now complete, and not already celebrated
+      if (wasComplete === false && isNowComplete && !isChapterCelebrated(subject.id, topic)) {
+        markChapterCelebrated(subject.id, topic);
+        toast({
+          title: getRandomCelebrationMessage(topic),
+          duration: 4000,
+        });
+      }
+    }
+    
+    prevChapterStatesRef.current = currentStates;
+  }, [chapterStats.chapterDetails, subject.id]);
 
   const handleStatusChange = useCallback(
     (bulletId: string, newConfidence: ConfidenceState) => {
@@ -232,11 +296,30 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
     >
       <SubjectTabs subjectId={subject.id} />
 
-      {/* Progress Bar */}
+      {/* Chapter Progress Card */}
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold">Chapters Completed</span>
+            </div>
+            <span className="text-lg font-bold text-primary">
+              {chapterStats.completedChapters} / {chapterStats.totalChapters}
+            </span>
+          </div>
+          <Progress value={chapterStats.progress} className="h-2.5" />
+          <p className="text-xs text-muted-foreground mt-2">
+            Complete all topics in a chapter to mark it as done
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Syllabus Progress */}
       <Card>
         <CardContent className="py-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Syllabus Progress</span>
+            <span className="text-sm font-medium">Topic Progress</span>
             <div className="flex items-center gap-3">
               <SyncStatusIndicator />
               <span className="text-sm text-muted-foreground">
@@ -310,8 +393,18 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
             </CardContent>
           </Card>
         ) : (
-          Object.entries(groupedData).map(([mainTopic, data]) => (
-            <Card key={mainTopic} className="overflow-hidden">
+          Object.entries(groupedData).map(([mainTopic, data]) => {
+            const chapterDetail = chapterStats.chapterDetails.get(mainTopic);
+            const isChapterComplete = chapterDetail?.isComplete ?? false;
+            
+            return (
+            <Card 
+              key={mainTopic} 
+              className={cn(
+                "overflow-hidden transition-all duration-300",
+                isChapterComplete && "ring-2 ring-status-green/30 bg-status-green-bg/20"
+              )}
+            >
               <Collapsible
                 open={expandedTopics.has(mainTopic)}
                 onOpenChange={() => toggleTopic(mainTopic)}
@@ -326,15 +419,26 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
                           <ChevronRight className="h-4 w-4" />
                         )}
                         <CardTitle className="text-base">{mainTopic}</CardTitle>
+                        {isChapterComplete && (
+                          <CheckCircle2 className="h-4 w-4 text-status-green" />
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {data.stats.confident}/{data.stats.total}
-                        </Badge>
-                        <Progress
-                          value={(data.stats.confident / data.stats.total) * 100}
-                          className="w-20 h-2"
-                        />
+                        {isChapterComplete ? (
+                          <Badge variant="secondary" className="text-xs bg-status-green-bg text-status-green border-status-green/30">
+                            ✅ Completed
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            {data.stats.confident}/{data.stats.total}
+                          </Badge>
+                        )}
+                        {!isChapterComplete && (
+                          <Progress
+                            value={(data.stats.confident / data.stats.total) * 100}
+                            className="w-20 h-2"
+                          />
+                        )}
                       </div>
                     </div>
                   </CardHeader>
@@ -363,7 +467,7 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
                 </CollapsibleContent>
               </Collapsible>
             </Card>
-          ))
+          )})
         )}
       </div>
 

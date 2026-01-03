@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AppState, Bullet, PastPaper, Status } from '@/types';
 import { loadData, saveData, generateId, clearAllAppData } from '@/lib/storage';
+import { clearCelebratedChaptersForSubject } from '@/lib/chapterCompletion';
 
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => loadData());
@@ -139,7 +140,7 @@ export const useAppState = () => {
     })();
   }, []);
 
-  // Clear data for a specific subject only (bullets, papers, theme overrides)
+  // Clear data for a specific subject only (bullets, papers, theme overrides, chapter celebrations)
   const clearSubjectData = useCallback((subjectId: string) => {
     setState(prev => ({
       ...prev,
@@ -163,6 +164,9 @@ export const useAppState = () => {
     } catch {
       // Ignore localStorage errors
     }
+    
+    // Clear chapter completion celebrations for the subject
+    clearCelebratedChaptersForSubject(subjectId);
   }, []);
 
   return {
