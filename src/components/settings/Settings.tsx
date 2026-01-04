@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import {
   Select,
@@ -21,6 +22,7 @@ import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient
 import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
 import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
 import { SubjectThemeSettings } from './SubjectThemeSettings';
+import { type IntegrityCheckResult } from '@/lib/dataIntegrity';
 import {
   Settings as SettingsIcon,
   Download,
@@ -37,6 +39,8 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Shield,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SettingsProps {
@@ -45,6 +49,8 @@ interface SettingsProps {
   onImportState: (state: AppState) => void;
   onClearData: () => void;
   onClearSubjectData?: (subjectId: string) => void;
+  onCheckIntegrity?: () => IntegrityCheckResult;
+  onRepairDuplicates?: () => IntegrityCheckResult;
 }
 
 export const Settings = ({
@@ -53,6 +59,8 @@ export const Settings = ({
   onImportState,
   onClearData,
   onClearSubjectData,
+  onCheckIntegrity,
+  onRepairDuplicates,
 }: SettingsProps) => {
   const { toast } = useToast();
   const { theme, setTheme, reducedMotion, setReducedMotion, highContrast, setHighContrast } = useTheme();
@@ -64,6 +72,8 @@ export const Settings = ({
   const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiTestMessage, setAiTestMessage] = useState('');
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() => loadReminderSettings());
+  const [integrityResult, setIntegrityResult] = useState<IntegrityCheckResult | null>(null);
+  const [isCheckingIntegrity, setIsCheckingIntegrity] = useState(false);
 
   const handleTestAIConnection = async () => {
     setAiTestStatus('testing');
@@ -167,6 +177,32 @@ export const Settings = ({
     const topicCount = state.bullets.filter(b => b.subjectId === subjectId).length;
     const paperCount = state.pastPapers.filter(p => p.subjectId === subjectId).length;
     return { topicCount, paperCount };
+  };
+
+  // Data integrity check
+  const handleCheckIntegrity = () => {
+    if (!onCheckIntegrity) return;
+    setIsCheckingIntegrity(true);
+    try {
+      const result = onCheckIntegrity();
+      setIntegrityResult(result);
+      if (!result.hasDuplicates) {
+        toast({ title: 'Data Integrity OK', description: 'No duplicate records found.' });
+      }
+    } finally {
+      setIsCheckingIntegrity(false);
+    }
+  };
+
+  const handleRepairDuplicates = () => {
+    if (!onRepairDuplicates) return;
+    const result = onRepairDuplicates();
+    setIntegrityResult(result);
+    const totalRemoved = result.bullets.duplicates + result.papers.duplicates + result.components.duplicates;
+    toast({ 
+      title: 'Duplicates Repaired', 
+      description: `Removed ${totalRemoved} duplicate record${totalRemoved !== 1 ? 's' : ''}.` 
+    });
   };
 
   return (
@@ -576,6 +612,98 @@ export const Settings = ({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Data Integrity Check */}
+          {onCheckIntegrity && onRepairDuplicates && (
+            <div className="space-y-3">
+              <div>
+                <p className="font-medium flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Data Integrity
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Check for and repair duplicate records that may cause issues
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckIntegrity}
+                  disabled={isCheckingIntegrity}
+                >
+                  {isCheckingIntegrity ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Shield className="h-4 w-4 mr-2" />
+                  )}
+                  Check Integrity
+                </Button>
+                
+                {integrityResult?.hasDuplicates && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRepairDuplicates}
+                    className="text-status-amber hover:text-status-amber"
+                  >
+                    <Wand2 className="h-4 w-4 mr-2" />
+                    Repair Duplicates
+                  </Button>
+                )}
+              </div>
+
+              {integrityResult && (
+                <div className={`p-3 rounded-lg border ${integrityResult.hasDuplicates ? 'border-status-amber/30 bg-status-amber/5' : 'border-status-green/30 bg-status-green/5'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {integrityResult.hasDuplicates ? (
+                      <>
+                        <AlertTriangle className="h-4 w-4 text-status-amber" />
+                        <span className="text-sm font-medium text-status-amber">Duplicates Found</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 text-status-green" />
+                        <span className="text-sm font-medium text-status-green">All Clear</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-muted-foreground">Topics:</span>{' '}
+                      <span className="font-medium">{integrityResult.bullets.total}</span>
+                      {integrityResult.bullets.duplicates > 0 && (
+                        <Badge variant="outline" className="ml-1 text-status-amber border-status-amber/30">
+                          {integrityResult.bullets.duplicates} dupe
+                        </Badge>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Papers:</span>{' '}
+                      <span className="font-medium">{integrityResult.papers.total}</span>
+                      {integrityResult.papers.duplicates > 0 && (
+                        <Badge variant="outline" className="ml-1 text-status-amber border-status-amber/30">
+                          {integrityResult.papers.duplicates} dupe
+                        </Badge>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Components:</span>{' '}
+                      <span className="font-medium">{integrityResult.components.total}</span>
+                      {integrityResult.components.duplicates > 0 && (
+                        <Badge variant="outline" className="ml-1 text-status-amber border-status-amber/30">
+                          {integrityResult.components.duplicates} dupe
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

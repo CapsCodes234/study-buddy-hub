@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Component } from '@/types/components';
+import { loadAndDedupeComponents, deduplicateComponents } from '@/lib/dataIntegrity';
 
 const STORAGE_KEY = 'study-tracker-components';
 
@@ -7,19 +8,15 @@ export function useComponents(subjectId?: string) {
   const [components, setComponents] = useState<Component[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const all: Component[] = JSON.parse(stored);
-      setComponents(subjectId ? all.filter((c) => c.subjectId === subjectId) : all);
-    } else {
-      setComponents([]);
-    }
+    // Load with deduplication
+    const all = loadAndDedupeComponents();
+    setComponents(subjectId ? all.filter((c) => c.subjectId === subjectId) : all);
   }, [subjectId]);
 
   const addComponents = useCallback(
     (newComponents: Omit<Component, 'id' | 'createdAt' | 'updatedAt'>[]) => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const existing: Component[] = stored ? JSON.parse(stored) : [];
+      // Load existing with deduplication
+      const existing = loadAndDedupeComponents();
 
       const now = new Date().toISOString();
       const toAdd: Component[] = newComponents.map((c) => ({
@@ -29,21 +26,27 @@ export function useComponents(subjectId?: string) {
         updatedAt: now,
       }));
 
-      const updated = [...existing, ...toAdd];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setComponents(subjectId ? updated.filter((c) => c.subjectId === subjectId) : updated);
+      // Merge and deduplicate to prevent duplicates on import
+      const merged = [...existing, ...toAdd];
+      const { deduped } = deduplicateComponents(merged);
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
+      setComponents(subjectId ? deduped.filter((c) => c.subjectId === subjectId) : deduped);
 
-      return toAdd;
+      // Return only the components that were actually added (not duplicates)
+      const addedIds = new Set(deduped.filter(d => toAdd.some(t => 
+        t.subjectId === d.subjectId && 
+        t.componentName.toLowerCase().trim() === d.componentName.toLowerCase().trim()
+      )).map(d => d.id));
+      
+      return toAdd.filter(t => addedIds.has(t.id));
     },
     [subjectId]
   );
 
   const updateComponent = useCallback(
     (id: string, updates: Partial<Component>) => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-
-      const all: Component[] = JSON.parse(stored);
+      const all = loadAndDedupeComponents();
       const updated = all.map((c) =>
         c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
       );
@@ -56,10 +59,7 @@ export function useComponents(subjectId?: string) {
 
   const deleteComponent = useCallback(
     (id: string) => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-
-      const all: Component[] = JSON.parse(stored);
+      const all = loadAndDedupeComponents();
       const updated = all.filter((c) => c.id !== id);
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
