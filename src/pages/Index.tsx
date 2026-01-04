@@ -53,6 +53,8 @@ const Index = () => {
     importState,
     clearAllData,
     clearSubjectData,
+    checkDataIntegrity,
+    repairAllDuplicates,
   } = useAppState();
 
   // Determine current view based on route
@@ -205,6 +207,8 @@ const Index = () => {
             onImportState={importState}
             onClearData={clearAllData}
             onClearSubjectData={clearSubjectData}
+            onCheckIntegrity={checkDataIntegrity}
+            onRepairDuplicates={repairAllDuplicates}
           />
         )}
 

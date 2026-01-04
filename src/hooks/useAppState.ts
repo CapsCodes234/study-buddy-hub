@@ -2,15 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppState, Bullet, PastPaper, Status } from '@/types';
 import { loadData, saveData, generateId, clearAllAppData } from '@/lib/storage';
 import { clearCelebratedChaptersForSubject } from '@/lib/chapterCompletion';
+import { 
+  clearSubjectComponents, 
+  deduplicateBullets, 
+  deduplicatePastPapers,
+  repairDuplicates,
+  runIntegrityCheck,
+  type IntegrityCheckResult
+} from '@/lib/dataIntegrity';
 
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => loadData());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load data on mount
+  // Load data on mount and run deduplication
   useEffect(() => {
     const data = loadData();
-    setState(data);
+    
+    // Deduplicate on load to fix any existing duplicates
+    const bulletResult = deduplicateBullets(data.bullets);
+    const paperResult = deduplicatePastPapers(data.pastPapers);
+    
+    const cleanedData = {
+      ...data,
+      bullets: bulletResult.deduped,
+      pastPapers: paperResult.deduped,
+    };
+    
+    if (bulletResult.removedCount > 0 || paperResult.removedCount > 0) {
+      console.log(`Data integrity: removed ${bulletResult.removedCount} duplicate bullets, ${paperResult.removedCount} duplicate papers on load`);
+    }
+    
+    setState(cleanedData);
     setIsLoading(false);
   }, []);
 
@@ -140,13 +163,16 @@ export const useAppState = () => {
     })();
   }, []);
 
-  // Clear data for a specific subject only (bullets, papers, theme overrides, chapter celebrations)
+  // Clear data for a specific subject only (bullets, papers, components, theme overrides, chapter celebrations)
   const clearSubjectData = useCallback((subjectId: string) => {
     setState(prev => ({
       ...prev,
       bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
       pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
     }));
+    
+    // Clear subject components from localStorage
+    clearSubjectComponents(subjectId);
     
     // Clear subject theme overrides from localStorage
     try {
@@ -169,6 +195,22 @@ export const useAppState = () => {
     clearCelebratedChaptersForSubject(subjectId);
   }, []);
 
+  // Check data integrity (for UI display)
+  const checkDataIntegrity = useCallback((): IntegrityCheckResult => {
+    return runIntegrityCheck(state.bullets, state.pastPapers);
+  }, [state.bullets, state.pastPapers]);
+
+  // Repair all duplicates
+  const repairAllDuplicates = useCallback(() => {
+    const result = repairDuplicates(state.bullets, state.pastPapers);
+    setState(prev => ({
+      ...prev,
+      bullets: result.bullets,
+      pastPapers: result.papers,
+    }));
+    return result.stats;
+  }, [state.bullets, state.pastPapers]);
+
   return {
     state,
     isLoading,
@@ -188,5 +230,8 @@ export const useAppState = () => {
     importState,
     clearAllData,
     clearSubjectData,
+    // Data integrity
+    checkDataIntegrity,
+    repairAllDuplicates,
   };
 };
