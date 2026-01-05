@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { exportAsJSON, importFromJSON, type ImportResult } from '@/lib/storage';
+import { exportAsJSON, importFromJSON, isImportSuccess } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient';
@@ -149,28 +149,31 @@ export const Settings = ({
       try {
         const json = event.target?.result as string;
         // Pass existing state to merge and deduplicate properly
-        const result: ImportResult = importFromJSON(json, state);
+        const result = importFromJSON(json, state);
         
-        if (result.success) {
-          onImportState(result.data);
-          
-          // Show success message with deduplication info if applicable
-          const dupInfo = result.duplicatesRemoved;
-          const dupMessage = dupInfo.bullets > 0 || dupInfo.papers > 0
-            ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''} and ${dupInfo.papers} duplicate paper${dupInfo.papers !== 1 ? 's' : ''}.`
-            : '';
-          
-          toast({
-            title: 'Backup restored',
-            description: `Your data has been restored from the backup.${dupMessage}`,
-          });
-        } else {
+        // Use type guard for proper narrowing
+        if (!isImportSuccess(result)) {
           toast({
             title: 'Import failed',
             description: result.error,
             variant: 'destructive',
           });
+          return;
         }
+        
+        // Success case - result is now narrowed to success type
+        onImportState(result.data);
+        
+        // Show success message with deduplication info if applicable
+        const dupInfo = result.duplicatesRemoved;
+        const dupMessage = dupInfo.bullets > 0 || dupInfo.papers > 0
+          ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''} and ${dupInfo.papers} duplicate paper${dupInfo.papers !== 1 ? 's' : ''}.`
+          : '';
+        
+        toast({
+          title: 'Backup restored',
+          description: `Your data has been restored from the backup.${dupMessage}`,
+        });
       } catch (error) {
         console.error('Error reading backup file:', error);
         toast({
@@ -573,7 +576,7 @@ export const Settings = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={handleExportBackup}>
+            <Button variant="outline" onClick={handleExportBackup} className="min-h-[44px]">
               <Download className="h-4 w-4 mr-2" />
               Export Backup
             </Button>
@@ -586,7 +589,7 @@ export const Settings = ({
                 onChange={handleImportFileSelect}
                 className="hidden"
               />
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="min-h-[44px]">
                 <label htmlFor="import-backup" className="cursor-pointer">
                   <Upload className="h-4 w-4 mr-2" />
                   Import Backup
@@ -597,7 +600,7 @@ export const Settings = ({
 
           <Separator />
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="font-medium text-destructive">Clear All Data</p>
               <p className="text-xs text-muted-foreground">
@@ -608,6 +611,7 @@ export const Settings = ({
               variant="destructive" 
               size="sm"
               onClick={() => setResetModalOpen(true)}
+              className="min-h-[44px] w-full sm:w-auto"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Clear Data
@@ -633,7 +637,7 @@ export const Settings = ({
                   return (
                     <div 
                       key={subject.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border bg-muted/30"
                     >
                       <div className="flex-1">
                         <p className="font-medium text-sm">{subject.name}</p>
@@ -646,7 +650,7 @@ export const Settings = ({
                         size="sm"
                         onClick={() => handleClearSubjectClick(subject.id, subject.name)}
                         disabled={!hasData}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 min-h-[44px] w-full sm:w-auto"
                       >
                         <Trash2 className="h-3 w-3 mr-1" />
                         Clear
@@ -673,12 +677,13 @@ export const Settings = ({
                 </p>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCheckIntegrity}
                   disabled={isCheckingIntegrity}
+                  className="min-h-[44px]"
                 >
                   {isCheckingIntegrity ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -693,7 +698,7 @@ export const Settings = ({
                     variant="outline"
                     size="sm"
                     onClick={handleRepairDuplicates}
-                    className="text-status-amber hover:text-status-amber"
+                    className="text-status-amber hover:text-status-amber min-h-[44px]"
                   >
                     <Wand2 className="h-4 w-4 mr-2" />
                     Repair Duplicates
@@ -716,7 +721,7 @@ export const Settings = ({
                       </>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                     <div>
                       <span className="text-muted-foreground">Topics:</span>{' '}
                       <span className="font-medium">{integrityResult.bullets.total}</span>
