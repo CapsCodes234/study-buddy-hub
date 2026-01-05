@@ -189,6 +189,11 @@ export type ImportResult =
       error: string;
     };
 
+// Type guard for ImportResult
+export function isImportSuccess(result: ImportResult): result is { success: true; data: AppState; duplicatesRemoved: { bullets: number; papers: number } } {
+  return result.success === true;
+}
+
 // Maximum backup file size (10MB)
 const MAX_BACKUP_SIZE = 10 * 1024 * 1024;
 
