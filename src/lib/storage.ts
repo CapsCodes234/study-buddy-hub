@@ -14,6 +14,7 @@
 
 import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
 import { safeJSONParse, sanitizeText, sanitizeCSVCell, validateCSVBullet, appStateSchema } from '@/lib/validation';
+import { deduplicateBullets, deduplicatePastPapers } from '@/lib/dataIntegrity';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -111,9 +112,23 @@ export const clearAllAppData = async (): Promise<void> => {
   }
 };
 
-// Export data as JSON for backup
+// Backup format interface
+interface BackupFormat {
+  version: number;
+  exportedAt: string;
+  app: string;
+  data: AppState;
+}
+
+// Export data as JSON for backup with versioning
 export const exportAsJSON = (state: AppState): string => {
-  return JSON.stringify(state, null, 2);
+  const backup: BackupFormat = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    app: 'study-buddy-hub',
+    data: state,
+  };
+  return JSON.stringify(backup, null, 2);
 };
 
 // Validate AppState schema
@@ -162,23 +177,140 @@ export const validateAppState = (data: unknown): data is AppState => {
   return true;
 };
 
-// Import data from JSON with schema validation
-export const importFromJSON = (jsonString: string): AppState | null => {
+// Import result type for better error handling
+export type ImportResult =
+  | {
+      success: true;
+      data: AppState;
+      duplicatesRemoved: { bullets: number; papers: number };
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+// Maximum backup file size (10MB)
+const MAX_BACKUP_SIZE = 10 * 1024 * 1024;
+
+// Import data from JSON with safe parsing, schema validation, and deduplication
+// Merges with existing state to prevent duplicates after clear operations
+export const importFromJSON = (jsonString: string, existingState?: AppState): ImportResult => {
   try {
-    const parsed = JSON.parse(jsonString);
-    if (validateAppState(parsed)) {
-      // Merge with defaults to ensure all required fields exist
+    // Check file size before parsing
+    if (jsonString.length > MAX_BACKUP_SIZE) {
       return {
-        subjects: parsed.subjects || DEFAULT_SUBJECTS,
-        bullets: parsed.bullets || [],
-        pastPapers: parsed.pastPapers || [],
-        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+        success: false,
+        error: 'Backup file is too large. Maximum size is 10MB.',
       };
     }
-    throw new Error('Invalid data structure: missing required keys or invalid types');
+
+    // Use safe JSON parse to prevent prototype pollution
+    const parsed = safeJSONParse<unknown>(jsonString);
+    if (!parsed) {
+      return {
+        success: false,
+        error: 'Backup file is corrupted or contains invalid JSON.',
+      };
+    }
+
+    // Handle both legacy format (raw AppState) and new format (wrapped with version)
+    let appStateData: unknown;
+
+    if (typeof parsed === 'object' && parsed !== null) {
+      const obj = parsed as Record<string, unknown>;
+      
+      // Check if it's the new wrapped format (has version, data, and app fields)
+      if ('version' in obj && 'data' in obj && 'app' in obj && typeof obj.version === 'number') {
+        appStateData = obj.data;
+      } else {
+        // Legacy format: raw AppState (treat as version 0)
+        appStateData = parsed;
+      }
+    } else {
+      return {
+        success: false,
+        error: 'Backup file has an invalid format.',
+      };
+    }
+
+    // Validate against Zod schema
+    const validation = appStateSchema.safeParse(appStateData);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      
+      return {
+        success: false,
+        error: `Backup file is invalid or from a newer version. ${errorMessage}`,
+      };
+    }
+
+    // Use validated data (not raw parsed)
+    const validatedState = validation.data;
+
+    // Load existing state if not provided (for merge deduplication)
+    const currentState = existingState ?? loadData();
+
+    // Merge settings with defaults, ensuring boolean types for dangerous flags
+    const mergedSettings: AppSettings = { ...DEFAULT_SETTINGS, ...currentState.settings };
+    if (validatedState.settings) {
+      // Only merge valid boolean values for dangerous flags
+      if (typeof validatedState.settings.aiExtractionEnabled === 'boolean') {
+        mergedSettings.aiExtractionEnabled = validatedState.settings.aiExtractionEnabled;
+      }
+      if (typeof validatedState.settings.aiFeaturesEnabled === 'boolean') {
+        mergedSettings.aiFeaturesEnabled = validatedState.settings.aiFeaturesEnabled;
+      }
+      if (typeof validatedState.settings.hasCompletedOnboarding === 'boolean') {
+        mergedSettings.hasCompletedOnboarding = validatedState.settings.hasCompletedOnboarding;
+      }
+      // Merge other optional settings
+      Object.keys(validatedState.settings).forEach(key => {
+        if (!(key in mergedSettings)) {
+          (mergedSettings as unknown as Record<string, unknown>)[key] = (validatedState.settings as unknown as Record<string, unknown>)[key];
+        }
+      });
+    }
+
+    // Merge subjects (prefer imported, but keep existing if imported is empty)
+    // Type assertion is safe because Zod validation ensures required fields
+    const mergedSubjects: Subject[] = validatedState.subjects.length > 0 
+      ? (validatedState.subjects as Subject[])
+      : (currentState.subjects.length > 0 ? currentState.subjects : DEFAULT_SUBJECTS);
+
+    // CRITICAL FIX: Merge bullets and past papers with existing data, then deduplicate
+    // This prevents duplicates when importing after clearing subject data
+    // Type assertions are safe because Zod validation ensures required fields
+    const mergedBullets: Bullet[] = [...currentState.bullets, ...(validatedState.bullets as Bullet[])];
+    const mergedPapers: PastPaper[] = [...currentState.pastPapers, ...(validatedState.pastPapers as PastPaper[])];
+
+    // Deduplicate the merged arrays (this removes duplicates between existing and imported)
+    const bulletResult = deduplicateBullets(mergedBullets);
+    const paperResult = deduplicatePastPapers(mergedPapers);
+
+    const dedupedState: AppState = {
+      subjects: mergedSubjects,
+      bullets: bulletResult.deduped,
+      pastPapers: paperResult.deduped,
+      settings: mergedSettings,
+    };
+
+    return {
+      success: true,
+      data: dedupedState,
+      duplicatesRemoved: {
+        bullets: bulletResult.removedCount,
+        papers: paperResult.removedCount,
+      },
+    };
   } catch (error) {
     console.error('Error importing JSON:', error);
-    return null;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      success: false,
+      error: `Failed to import backup: ${errorMessage}`,
+    };
   }
 };
 

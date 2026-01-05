@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { exportAsJSON, importFromJSON } from '@/lib/storage';
+import { exportAsJSON, importFromJSON, type ImportResult } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient';
@@ -132,23 +132,66 @@ export const Settings = ({
   const handleConfirmImport = () => {
     if (!pendingImportFile) return;
 
+    // Check file size before reading
+    if (pendingImportFile.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'Import failed',
+        description: 'Backup file is too large. Maximum size is 10MB.',
+        variant: 'destructive',
+      });
+      setPendingImportFile(null);
+      setImportModalOpen(false);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const json = event.target?.result as string;
-      const imported = importFromJSON(json);
-      if (imported) {
-        onImportState(imported);
-        toast({ title: 'Backup restored', description: 'Your data has been restored from the backup.' });
-      } else {
-        toast({ 
-          title: 'Import failed', 
-          description: 'Invalid backup file. Please ensure the file contains valid subjects, bullets, and pastPapers data.', 
-          variant: 'destructive' 
+      try {
+        const json = event.target?.result as string;
+        // Pass existing state to merge and deduplicate properly
+        const result: ImportResult = importFromJSON(json, state);
+        
+        if (result.success) {
+          onImportState(result.data);
+          
+          // Show success message with deduplication info if applicable
+          const dupInfo = result.duplicatesRemoved;
+          const dupMessage = dupInfo.bullets > 0 || dupInfo.papers > 0
+            ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''} and ${dupInfo.papers} duplicate paper${dupInfo.papers !== 1 ? 's' : ''}.`
+            : '';
+          
+          toast({
+            title: 'Backup restored',
+            description: `Your data has been restored from the backup.${dupMessage}`,
+          });
+        } else {
+          toast({
+            title: 'Import failed',
+            description: result.error,
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error('Error reading backup file:', error);
+        toast({
+          title: 'Import failed',
+          description: 'Failed to read backup file. Please try again.',
+          variant: 'destructive',
         });
       }
     };
+    
+    reader.onerror = () => {
+      toast({
+        title: 'Import failed',
+        description: 'Failed to read backup file. Please try again.',
+        variant: 'destructive',
+      });
+    };
+    
     reader.readAsText(pendingImportFile);
     setPendingImportFile(null);
+    setImportModalOpen(false);
   };
 
   const handleConfirmReset = () => {

@@ -202,3 +202,79 @@ export function repairDuplicates(
     },
   };
 }
+
+/**
+ * Runtime integrity scan that detects and automatically cleans duplicates.
+ * This ensures data integrity after imports, clear operations, and on app load.
+ * 
+ * @param bullets - Current bullets array
+ * @param papers - Current past papers array
+ * @param onCleanup - Optional callback to update state with cleaned data
+ * @param showToast - Optional callback to show toast notifications
+ * @returns Cleaned data and statistics
+ */
+export interface IntegrityScanResult {
+  bullets: Bullet[];
+  papers: PastPaper[];
+  components: Component[];
+  cleaned: boolean;
+  stats: IntegrityCheckResult;
+}
+
+export function runIntegrityScan(
+  bullets: Bullet[],
+  papers: PastPaper[],
+  onCleanup?: (cleaned: { bullets: Bullet[]; papers: PastPaper[] }) => void,
+  showToast?: (message: string) => void
+): IntegrityScanResult {
+  // Load and check components
+  const components = loadAndDedupeComponents();
+  
+  // Run deduplication
+  const bulletResult = deduplicateBullets(bullets);
+  const paperResult = deduplicatePastPapers(papers);
+  const componentResult = deduplicateComponents(components);
+
+  const hasDuplicates = 
+    bulletResult.removedCount > 0 ||
+    paperResult.removedCount > 0 ||
+    componentResult.removedCount > 0;
+
+  // If duplicates found, clean them
+  if (hasDuplicates) {
+    const totalRemoved = bulletResult.removedCount + paperResult.removedCount + componentResult.removedCount;
+    const warningMsg = `Data integrity: Removed ${totalRemoved} duplicate record${totalRemoved !== 1 ? 's' : ''} (${bulletResult.removedCount} bullets, ${paperResult.removedCount} papers, ${componentResult.removedCount} components)`;
+    
+    console.warn(warningMsg);
+    
+    if (showToast) {
+      showToast(warningMsg);
+    }
+
+    // Save cleaned components
+    if (componentResult.removedCount > 0) {
+      localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(componentResult.deduped));
+    }
+
+    // Notify parent to update state
+    if (onCleanup) {
+      onCleanup({
+        bullets: bulletResult.deduped,
+        papers: paperResult.deduped,
+      });
+    }
+  }
+
+  return {
+    bullets: bulletResult.deduped,
+    papers: paperResult.deduped,
+    components: componentResult.deduped,
+    cleaned: hasDuplicates,
+    stats: {
+      bullets: { total: bullets.length, duplicates: bulletResult.removedCount },
+      papers: { total: papers.length, duplicates: paperResult.removedCount },
+      components: { total: components.length, duplicates: componentResult.removedCount },
+      hasDuplicates,
+    },
+  };
+}

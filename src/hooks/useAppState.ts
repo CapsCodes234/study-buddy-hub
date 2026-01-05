@@ -8,6 +8,7 @@ import {
   deduplicatePastPapers,
   repairDuplicates,
   runIntegrityCheck,
+  runIntegrityScan,
   type IntegrityCheckResult
 } from '@/lib/dataIntegrity';
 
@@ -15,25 +16,34 @@ export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => loadData());
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load data on mount and run deduplication
+  // Load data on mount and run integrity scan (once)
   useEffect(() => {
     const data = loadData();
     
-    // Deduplicate on load to fix any existing duplicates
-    const bulletResult = deduplicateBullets(data.bullets);
-    const paperResult = deduplicatePastPapers(data.pastPapers);
+    // Run integrity scan on app load to detect and clean duplicates
+    const scanResult = runIntegrityScan(
+      data.bullets,
+      data.pastPapers,
+      (cleaned) => {
+        setState(prev => ({
+          ...prev,
+          bullets: cleaned.bullets,
+          pastPapers: cleaned.papers,
+        }));
+      },
+      (message) => {
+        // Log warning (toast can be added later if needed)
+        console.warn(message);
+      }
+    );
     
-    const cleanedData = {
-      ...data,
-      bullets: bulletResult.deduped,
-      pastPapers: paperResult.deduped,
-    };
+    // Update state with cleaned data
+    setState(prev => ({
+      ...prev,
+      bullets: scanResult.bullets,
+      pastPapers: scanResult.papers,
+    }));
     
-    if (bulletResult.removedCount > 0 || paperResult.removedCount > 0) {
-      console.log(`Data integrity: removed ${bulletResult.removedCount} duplicate bullets, ${paperResult.removedCount} duplicate papers on load`);
-    }
-    
-    setState(cleanedData);
     setIsLoading(false);
   }, []);
 
@@ -149,7 +159,21 @@ export const useAppState = () => {
 
   // Full state operations
   const importState = useCallback((newState: AppState) => {
-    setState(newState);
+    // Run integrity scan after import to ensure no duplicates
+    const scanResult = runIntegrityScan(
+      newState.bullets,
+      newState.pastPapers,
+      undefined, // State will be set below
+      (message) => {
+        console.warn(message);
+      }
+    );
+    
+    setState({
+      ...newState,
+      bullets: scanResult.bullets,
+      pastPapers: scanResult.papers,
+    });
   }, []);
 
   const clearAllData = useCallback((redirectTo?: string) => {
@@ -165,11 +189,29 @@ export const useAppState = () => {
 
   // Clear data for a specific subject only (bullets, papers, components, theme overrides, chapter celebrations)
   const clearSubjectData = useCallback((subjectId: string) => {
-    setState(prev => ({
-      ...prev,
-      bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
-      pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
-    }));
+    setState(prev => {
+      const filtered = {
+        ...prev,
+        bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
+        pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
+      };
+      
+      // Run integrity scan after clearing to ensure no leftover duplicates
+      const scanResult = runIntegrityScan(
+        filtered.bullets,
+        filtered.pastPapers,
+        undefined,
+        (message) => {
+          console.warn(message);
+        }
+      );
+      
+      return {
+        ...filtered,
+        bullets: scanResult.bullets,
+        pastPapers: scanResult.papers,
+      };
+    });
     
     // Clear subject components from localStorage
     clearSubjectComponents(subjectId);
