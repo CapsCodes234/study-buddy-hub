@@ -191,15 +191,26 @@ export const Settings = ({
         
         // Show success message with deduplication info if applicable
         const dupInfo = result.duplicatesRemoved;
-        const hasDuplicates = dupInfo.bullets > 0 || dupInfo.papers > 0 || dupInfo.components > 0;
+        const hasDuplicates = dupInfo.bullets > 0 || dupInfo.papers > 0 || dupInfo.components > 0 || dupInfo.subjectComponents > 0;
         const dupMessage = hasDuplicates
-          ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''}, ${dupInfo.papers} paper${dupInfo.papers !== 1 ? 's' : ''}, and ${dupInfo.components} component${dupInfo.components !== 1 ? 's' : ''}.`
+          ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''}, ${dupInfo.papers} paper${dupInfo.papers !== 1 ? 's' : ''}, ${dupInfo.components} component${dupInfo.components !== 1 ? 's' : ''}, and ${dupInfo.subjectComponents} subject component${dupInfo.subjectComponents !== 1 ? 's' : ''}.`
           : '';
         
         toast({
           title: 'Backup restored',
           description: `Your data has been restored from the backup.${dupMessage}`,
         });
+
+        // Show warnings if any (e.g., missing components)
+        if (result.warnings && result.warnings.length > 0) {
+          setTimeout(() => {
+            toast({
+              title: 'Import Warning',
+              description: result.warnings!.join(' '),
+              variant: 'destructive',
+            });
+          }, 1500);
+        }
       } catch (error) {
         console.error('Error reading backup file:', error);
         toast({
