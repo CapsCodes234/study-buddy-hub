@@ -105,15 +105,40 @@ export const Settings = ({
     toast({ title: 'Reminder settings saved' });
   };
 
-  const handleExportBackup = () => {
+  const handleExportBackup = async () => {
     const json = exportAsJSON(state);
     const blob = new Blob([json], { type: 'application/json' });
+    const date = new Date().toISOString().split('T')[0];
+    const fileName = `study-tracker-backup-${date}.json`;
+
+    // Try Web Share API first (better for mobile/tablet)
+    if (navigator.share && navigator.canShare) {
+      try {
+        const file = new File([blob], fileName, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Study Tracker Backup',
+          });
+          toast({ title: 'Backup exported', description: 'Your data has been shared.' });
+          return;
+        }
+      } catch (err) {
+        // User cancelled or share failed - fall through to download
+        if ((err as Error).name === 'AbortError') {
+          return; // User cancelled, don't show error
+        }
+      }
+    }
+
+    // Fallback: standard download approach
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const date = new Date().toISOString().split('T')[0];
     a.href = url;
-    a.download = `study-tracker-backup-${date}.json`;
+    a.download = fileName;
+    document.body.appendChild(a); // Append to body for better compatibility
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast({ title: 'Backup exported', description: 'Your data has been saved to a file.' });
   };
@@ -166,8 +191,9 @@ export const Settings = ({
         
         // Show success message with deduplication info if applicable
         const dupInfo = result.duplicatesRemoved;
-        const dupMessage = dupInfo.bullets > 0 || dupInfo.papers > 0
-          ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''} and ${dupInfo.papers} duplicate paper${dupInfo.papers !== 1 ? 's' : ''}.`
+        const hasDuplicates = dupInfo.bullets > 0 || dupInfo.papers > 0 || dupInfo.components > 0;
+        const dupMessage = hasDuplicates
+          ? ` Removed ${dupInfo.bullets} duplicate bullet${dupInfo.bullets !== 1 ? 's' : ''}, ${dupInfo.papers} paper${dupInfo.papers !== 1 ? 's' : ''}, and ${dupInfo.components} component${dupInfo.components !== 1 ? 's' : ''}.`
           : '';
         
         toast({
