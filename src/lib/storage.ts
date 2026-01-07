@@ -14,7 +14,8 @@
 
 import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
 import { safeJSONParse, sanitizeText, sanitizeCSVCell, validateCSVBullet, appStateSchema } from '@/lib/validation';
-import { deduplicateBullets, deduplicatePastPapers } from '@/lib/dataIntegrity';
+import { deduplicateBullets, deduplicatePastPapers, deduplicateComponents, loadAndDedupeComponents } from '@/lib/dataIntegrity';
+import { Component } from '@/types/components';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -112,21 +113,31 @@ export const clearAllAppData = async (): Promise<void> => {
   }
 };
 
-// Backup format interface
+// Storage keys for component data
+const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
+
+// Backup format interface - version 2 includes components
 interface BackupFormat {
   version: number;
   exportedAt: string;
   app: string;
   data: AppState;
+  // Added in version 2: component metadata from CSV/PDF imports
+  components?: Component[];
 }
 
 // Export data as JSON for backup with versioning
+// Version 2: now includes components from separate localStorage keys
 export const exportAsJSON = (state: AppState): string => {
+  // Load component data from separate storage key
+  const components = loadAndDedupeComponents();
+  
   const backup: BackupFormat = {
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     app: 'study-buddy-hub',
     data: state,
+    components: components.length > 0 ? components : undefined,
   };
   return JSON.stringify(backup, null, 2);
 };
@@ -182,7 +193,7 @@ export type ImportResult =
   | {
       success: true;
       data: AppState;
-      duplicatesRemoved: { bullets: number; papers: number };
+      duplicatesRemoved: { bullets: number; papers: number; components: number };
     }
   | {
       success: false;
@@ -190,7 +201,7 @@ export type ImportResult =
     };
 
 // Type guard for ImportResult
-export function isImportSuccess(result: ImportResult): result is { success: true; data: AppState; duplicatesRemoved: { bullets: number; papers: number } } {
+export function isImportSuccess(result: ImportResult): result is { success: true; data: AppState; duplicatesRemoved: { bullets: number; papers: number; components: number } } {
   return result.success === true;
 }
 
@@ -220,6 +231,7 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
 
     // Handle both legacy format (raw AppState) and new format (wrapped with version)
     let appStateData: unknown;
+    let importedComponents: Component[] = [];
 
     if (typeof parsed === 'object' && parsed !== null) {
       const obj = parsed as Record<string, unknown>;
@@ -227,6 +239,10 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       // Check if it's the new wrapped format (has version, data, and app fields)
       if ('version' in obj && 'data' in obj && 'app' in obj && typeof obj.version === 'number') {
         appStateData = obj.data;
+        // Extract components from v2+ backups
+        if (Array.isArray(obj.components)) {
+          importedComponents = obj.components as Component[];
+        }
       } else {
         // Legacy format: raw AppState (treat as version 0)
         appStateData = parsed;
@@ -294,6 +310,16 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
     const bulletResult = deduplicateBullets(mergedBullets);
     const paperResult = deduplicatePastPapers(mergedPapers);
 
+    // Handle components from v2+ backups - merge with existing and deduplicate
+    let componentResult = { deduped: [] as Component[], removedCount: 0 };
+    if (importedComponents.length > 0) {
+      const existingComponents = loadAndDedupeComponents();
+      const mergedComponents = [...existingComponents, ...importedComponents];
+      componentResult = deduplicateComponents(mergedComponents);
+      // Save merged components to localStorage
+      localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(componentResult.deduped));
+    }
+
     const dedupedState: AppState = {
       subjects: mergedSubjects,
       bullets: bulletResult.deduped,
@@ -307,6 +333,7 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       duplicatesRemoved: {
         bullets: bulletResult.removedCount,
         papers: paperResult.removedCount,
+        components: componentResult.removedCount,
       },
     };
   } catch (error) {
