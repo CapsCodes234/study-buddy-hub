@@ -5,8 +5,8 @@
 import { ExtractionResult, ExtractionChangelog, SubjectComponent } from '@/types/syllabus';
 import { DEFAULT_SUBJECTS, generateId } from '@/lib/storage';
 
-const CHANGELOG_KEY = 'study-tracker-extraction-changelog';
-const COMPONENTS_KEY = 'study-tracker-subject-components';
+export const CHANGELOG_KEY = 'study-tracker-extraction-changelog';
+export const SUBJECT_COMPONENTS_KEY = 'study-tracker-subject-components';
 const APP_STATE_KEY = 'study-tracker-data';
 
 /**
@@ -82,7 +82,7 @@ export function getSubjectChangelogs(subjectId: string): ExtractionChangelog[] {
  */
 export function saveSubjectComponents(components: SubjectComponent[]): void {
   try {
-    localStorage.setItem(COMPONENTS_KEY, JSON.stringify(components));
+    localStorage.setItem(SUBJECT_COMPONENTS_KEY, JSON.stringify(components));
   } catch (error) {
     console.error('Error saving subject components:', error);
   }
@@ -93,7 +93,7 @@ export function saveSubjectComponents(components: SubjectComponent[]): void {
  */
 export function loadSubjectComponents(): SubjectComponent[] {
   try {
-    const stored = localStorage.getItem(COMPONENTS_KEY);
+    const stored = localStorage.getItem(SUBJECT_COMPONENTS_KEY);
     const parsed = stored ? JSON.parse(stored) : [];
     if (Array.isArray(parsed) && parsed.length > 0) return parsed;
 

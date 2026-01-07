@@ -16,6 +16,14 @@ import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
 import { safeJSONParse, sanitizeText, sanitizeCSVCell, validateCSVBullet, appStateSchema } from '@/lib/validation';
 import { deduplicateBullets, deduplicatePastPapers, deduplicateComponents, loadAndDedupeComponents } from '@/lib/dataIntegrity';
 import { Component } from '@/types/components';
+import { SubjectComponent, ExtractionChangelog } from '@/types/syllabus';
+import { 
+  loadSubjectComponents, 
+  saveSubjectComponents, 
+  getExtractionChangelogs,
+  CHANGELOG_KEY,
+  SUBJECT_COMPONENTS_KEY
+} from '@/lib/storage/syllabusStorage';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -116,28 +124,36 @@ export const clearAllAppData = async (): Promise<void> => {
 // Storage keys for component data
 const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
 
-// Backup format interface - version 2 includes components
+// Backup format interface - version 3 includes all component stores + changelogs
 interface BackupFormat {
   version: number;
   exportedAt: string;
   app: string;
   data: AppState;
-  // Added in version 2: component metadata from CSV/PDF imports
+  // Version 2: component metadata from CSV/PDF imports (legacy)
   components?: Component[];
+  // Version 3: subject components for past paper logging
+  subjectComponents?: SubjectComponent[];
+  // Version 3: extraction changelogs for audit trail
+  extractionChangelogs?: ExtractionChangelog[];
 }
 
 // Export data as JSON for backup with versioning
-// Version 2: now includes components from separate localStorage keys
+// Version 3: now includes subjectComponents and extractionChangelogs
 export const exportAsJSON = (state: AppState): string => {
-  // Load component data from separate storage key
+  // Load component data from separate storage keys
   const components = loadAndDedupeComponents();
+  const subjectComponents = loadSubjectComponents();
+  const extractionChangelogs = getExtractionChangelogs();
   
   const backup: BackupFormat = {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     app: 'study-buddy-hub',
     data: state,
     components: components.length > 0 ? components : undefined,
+    subjectComponents: subjectComponents.length > 0 ? subjectComponents : undefined,
+    extractionChangelogs: extractionChangelogs.length > 0 ? extractionChangelogs : undefined,
   };
   return JSON.stringify(backup, null, 2);
 };
@@ -193,7 +209,8 @@ export type ImportResult =
   | {
       success: true;
       data: AppState;
-      duplicatesRemoved: { bullets: number; papers: number; components: number };
+      duplicatesRemoved: { bullets: number; papers: number; components: number; subjectComponents: number };
+      warnings?: string[];
     }
   | {
       success: false;
@@ -201,7 +218,12 @@ export type ImportResult =
     };
 
 // Type guard for ImportResult
-export function isImportSuccess(result: ImportResult): result is { success: true; data: AppState; duplicatesRemoved: { bullets: number; papers: number; components: number } } {
+export function isImportSuccess(result: ImportResult): result is { 
+  success: true; 
+  data: AppState; 
+  duplicatesRemoved: { bullets: number; papers: number; components: number; subjectComponents: number };
+  warnings?: string[];
+} {
   return result.success === true;
 }
 
@@ -232,6 +254,9 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
     // Handle both legacy format (raw AppState) and new format (wrapped with version)
     let appStateData: unknown;
     let importedComponents: Component[] = [];
+    let importedSubjectComponents: SubjectComponent[] = [];
+    let importedChangelogs: ExtractionChangelog[] = [];
+    let backupVersion = 0;
 
     if (typeof parsed === 'object' && parsed !== null) {
       const obj = parsed as Record<string, unknown>;
@@ -239,9 +264,18 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       // Check if it's the new wrapped format (has version, data, and app fields)
       if ('version' in obj && 'data' in obj && 'app' in obj && typeof obj.version === 'number') {
         appStateData = obj.data;
+        backupVersion = obj.version;
         // Extract components from v2+ backups
         if (Array.isArray(obj.components)) {
           importedComponents = obj.components as Component[];
+        }
+        // Extract subjectComponents from v3+ backups
+        if (Array.isArray(obj.subjectComponents)) {
+          importedSubjectComponents = obj.subjectComponents as SubjectComponent[];
+        }
+        // Extract extractionChangelogs from v3+ backups
+        if (Array.isArray(obj.extractionChangelogs)) {
+          importedChangelogs = obj.extractionChangelogs as ExtractionChangelog[];
         }
       } else {
         // Legacy format: raw AppState (treat as version 0)
@@ -320,6 +354,46 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(componentResult.deduped));
     }
 
+    // Handle subjectComponents from v3+ backups - merge with existing and deduplicate
+    let subjectComponentResult = { count: 0, duplicatesRemoved: 0 };
+    const warnings: string[] = [];
+    
+    if (importedSubjectComponents.length > 0) {
+      const existingSubjectComponents = loadSubjectComponents();
+      // Simple deduplication by id
+      const existingIds = new Set(existingSubjectComponents.map(c => c.id));
+      const newComponents = importedSubjectComponents.filter(c => !existingIds.has(c.id));
+      const merged = [...existingSubjectComponents, ...newComponents];
+      subjectComponentResult.duplicatesRemoved = importedSubjectComponents.length - newComponents.length;
+      subjectComponentResult.count = newComponents.length;
+      saveSubjectComponents(merged);
+    }
+
+    // Handle extractionChangelogs from v3+ backups
+    if (importedChangelogs.length > 0) {
+      const existingChangelogs = getExtractionChangelogs();
+      const existingIds = new Set(existingChangelogs.map(c => c.id));
+      const newChangelogs = importedChangelogs.filter(c => !existingIds.has(c.id));
+      const merged = [...existingChangelogs, ...newChangelogs];
+      try {
+        localStorage.setItem(CHANGELOG_KEY, JSON.stringify(merged));
+      } catch (e) {
+        console.warn('Failed to restore extraction changelogs:', e);
+      }
+    }
+
+    // Post-import verification: check if subjects have components
+    const allSubjectComponents = loadSubjectComponents();
+    const subjectsWithoutComponents = mergedSubjects.filter(
+      s => !allSubjectComponents.some(c => c.subjectId === s.id)
+    );
+    if (subjectsWithoutComponents.length > 0 && backupVersion < 3) {
+      warnings.push(
+        `${subjectsWithoutComponents.length} subject(s) have no paper components. ` +
+        `You may need to re-extract syllabus or configure components in Settings.`
+      );
+    }
+
     const dedupedState: AppState = {
       subjects: mergedSubjects,
       bullets: bulletResult.deduped,
@@ -334,7 +408,9 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
         bullets: bulletResult.removedCount,
         papers: paperResult.removedCount,
         components: componentResult.removedCount,
+        subjectComponents: subjectComponentResult.duplicatesRemoved,
       },
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   } catch (error) {
     console.error('Error importing JSON:', error);
