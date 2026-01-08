@@ -1,6 +1,11 @@
-# Backup Export/Import v2 Manual Test Checklist
+# Backup Export/Import v3 Manual Test Checklist
 
 ## Test Scenarios
+
+### 0. Pre-Requisites
+- [ ] Clear all data and start fresh if needed
+- [ ] Import a syllabus CSV that generates components
+- [ ] Add some past papers using the component dropdown
 
 ### 1. Import CSV that generates components
 - [ ] Import syllabus CSV with component columns
@@ -31,7 +36,19 @@
 - [ ] Verify all data transfers correctly
 - [ ] Check responsive layout doesn't affect functionality
 
-## Verification Requirements
+### 5. Component dropdown after fresh import
+- [ ] Clear Subject Data for a subject
+- [ ] Import backup (same one exported earlier)
+- [ ] Navigate to Past Papers for that subject
+- [ ] Click "Log Paper" button
+- [ ] **CRITICAL**: Verify component dropdown shows options (not "no components")
+- [ ] Verify component count matches pre-clear state
+
+### 6. CSV re-import deduplication
+- [ ] Import the same syllabus CSV for a subject twice
+- [ ] Verify no duplicate bullets are created
+- [ ] Verify no duplicate components are created
+- [ ] Check integrity checker shows no duplicates
 
 ### Data Integrity Checks
 - [ ] pastPapers count matches before/after export/import

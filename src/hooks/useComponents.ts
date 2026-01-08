@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Component } from '@/types/components';
 import { loadAndDedupeComponents, deduplicateComponents } from '@/lib/dataIntegrity';
-
-const STORAGE_KEY = 'study-tracker-components';
+import { COMPONENTS_STORAGE_KEY } from '@/lib/storage';
 
 export function useComponents(subjectId?: string) {
   const [components, setComponents] = useState<Component[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // Reload components when refreshKey changes or on mount
   useEffect(() => {
-    // Load with deduplication
     const all = loadAndDedupeComponents();
     setComponents(subjectId ? all.filter((c) => c.subjectId === subjectId) : all);
-  }, [subjectId]);
+  }, [subjectId, refreshKey]);
+
+  // Force refresh - useful after imports
+  const refreshComponents = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
   const addComponents = useCallback(
     (newComponents: Omit<Component, 'id' | 'createdAt' | 'updatedAt'>[]) => {
@@ -30,7 +35,7 @@ export function useComponents(subjectId?: string) {
       const merged = [...existing, ...toAdd];
       const { deduped } = deduplicateComponents(merged);
       
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(deduped));
+      localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(deduped));
       setComponents(subjectId ? deduped.filter((c) => c.subjectId === subjectId) : deduped);
 
       // Return only the components that were actually added (not duplicates)
@@ -51,7 +56,7 @@ export function useComponents(subjectId?: string) {
         c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
       );
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(updated));
       setComponents(subjectId ? updated.filter((c) => c.subjectId === subjectId) : updated);
     },
     [subjectId]
@@ -62,11 +67,11 @@ export function useComponents(subjectId?: string) {
       const all = loadAndDedupeComponents();
       const updated = all.filter((c) => c.id !== id);
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(updated));
       setComponents(subjectId ? updated.filter((c) => c.subjectId === subjectId) : updated);
     },
     [subjectId]
   );
 
-  return { components, addComponents, updateComponent, deleteComponent };
+  return { components, addComponents, updateComponent, deleteComponent, refreshComponents };
 }

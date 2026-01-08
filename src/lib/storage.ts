@@ -122,7 +122,7 @@ export const clearAllAppData = async (): Promise<void> => {
 };
 
 // Storage keys for component data
-const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
+export const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
 
 // Backup format interface - version 3 includes all component stores + changelogs
 interface BackupFormat {
@@ -130,20 +130,22 @@ interface BackupFormat {
   exportedAt: string;
   app: string;
   data: AppState;
-  // Version 2: component metadata from CSV/PDF imports (legacy)
+  // Version 2+: component metadata from CSV/PDF imports (used by useComponents hook)
+  // Stored in: study-tracker-components
   components?: Component[];
-  // Version 3: subject components for past paper logging
+  // Version 3+: subject components for syllabus structure
+  // Stored in: study-tracker-subject-components
   subjectComponents?: SubjectComponent[];
-  // Version 3: extraction changelogs for audit trail
+  // Version 3+: extraction changelogs for audit trail
   extractionChangelogs?: ExtractionChangelog[];
 }
 
 // Export data as JSON for backup with versioning
-// Version 3: now includes subjectComponents and extractionChangelogs
+// Version 3: includes both component stores + changelogs
 export const exportAsJSON = (state: AppState): string => {
-  // Load component data from separate storage keys
-  const components = loadAndDedupeComponents();
-  const subjectComponents = loadSubjectComponents();
+  // Load component data from BOTH storage keys
+  const components = loadAndDedupeComponents(); // study-tracker-components
+  const subjectComponents = loadSubjectComponents(); // study-tracker-subject-components  
   const extractionChangelogs = getExtractionChangelogs();
   
   const backup: BackupFormat = {
@@ -151,6 +153,7 @@ export const exportAsJSON = (state: AppState): string => {
     exportedAt: new Date().toISOString(),
     app: 'study-buddy-hub',
     data: state,
+    // Only include if there's data to reduce file size
     components: components.length > 0 ? components : undefined,
     subjectComponents: subjectComponents.length > 0 ? subjectComponents : undefined,
     extractionChangelogs: extractionChangelogs.length > 0 ? extractionChangelogs : undefined,
@@ -345,24 +348,32 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
     const paperResult = deduplicatePastPapers(mergedPapers);
 
     // Handle components from v2+ backups - merge with existing and deduplicate
+    // These are stored in study-tracker-components and used by useComponents hook
     let componentResult = { deduped: [] as Component[], removedCount: 0 };
     if (importedComponents.length > 0) {
       const existingComponents = loadAndDedupeComponents();
       const mergedComponents = [...existingComponents, ...importedComponents];
       componentResult = deduplicateComponents(mergedComponents);
-      // Save merged components to localStorage
+      // Save to the correct storage key that useComponents reads from
       localStorage.setItem(COMPONENTS_STORAGE_KEY, JSON.stringify(componentResult.deduped));
     }
 
     // Handle subjectComponents from v3+ backups - merge with existing and deduplicate
+    // These are stored in study-tracker-subject-components
     let subjectComponentResult = { count: 0, duplicatesRemoved: 0 };
     const warnings: string[] = [];
     
     if (importedSubjectComponents.length > 0) {
       const existingSubjectComponents = loadSubjectComponents();
-      // Simple deduplication by id
+      // Deduplicate by id AND by normalized key (subjectId + name)
       const existingIds = new Set(existingSubjectComponents.map(c => c.id));
-      const newComponents = importedSubjectComponents.filter(c => !existingIds.has(c.id));
+      const existingKeys = new Set(existingSubjectComponents.map(c => 
+        `${c.subjectId}|${c.name.toLowerCase().trim()}`
+      ));
+      const newComponents = importedSubjectComponents.filter(c => {
+        const key = `${c.subjectId}|${c.name.toLowerCase().trim()}`;
+        return !existingIds.has(c.id) && !existingKeys.has(key);
+      });
       const merged = [...existingSubjectComponents, ...newComponents];
       subjectComponentResult.duplicatesRemoved = importedSubjectComponents.length - newComponents.length;
       subjectComponentResult.count = newComponents.length;
@@ -382,15 +393,18 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       }
     }
 
-    // Post-import verification: check if subjects have components
+    // Post-import verification: check if subjects have components in EITHER store
     const allSubjectComponents = loadSubjectComponents();
-    const subjectsWithoutComponents = mergedSubjects.filter(
-      s => !allSubjectComponents.some(c => c.subjectId === s.id)
-    );
+    const allComponents = loadAndDedupeComponents();
+    const subjectsWithoutComponents = mergedSubjects.filter(s => {
+      const hasSubjectComponent = allSubjectComponents.some(c => c.subjectId === s.id);
+      const hasComponent = allComponents.some(c => c.subjectId === s.id);
+      return !hasSubjectComponent && !hasComponent;
+    });
     if (subjectsWithoutComponents.length > 0 && backupVersion < 3) {
       warnings.push(
         `${subjectsWithoutComponents.length} subject(s) have no paper components. ` +
-        `You may need to re-extract syllabus or configure components in Settings.`
+        `You may need to import component metadata via CSV or configure in Settings.`
       );
     }
 
@@ -587,7 +601,30 @@ export const importBulletsFromCSV = (csvString: string, subjects: Subject[]): Bu
     }
   }
 
-  return bullets;
+  // Deduplicate against existing bullets to prevent duplicates on re-import
+  // This uses normalized keys: subjectId|mainTopic|subtopic|bulletText (lowercase, trimmed)
+  const existingState = loadData();
+  const existingKeys = new Set(
+    existingState.bullets.map(b => 
+      `${b.subjectId}|${b.mainTopic}|${b.subtopic}|${b.bulletText}`.toLowerCase().trim()
+    )
+  );
+  
+  const dedupedBullets = bullets.filter(b => {
+    const key = `${b.subjectId}|${b.mainTopic}|${b.subtopic}|${b.bulletText}`.toLowerCase().trim();
+    if (existingKeys.has(key)) {
+      return false; // Skip duplicate
+    }
+    existingKeys.add(key); // Also dedupe within the import itself
+    return true;
+  });
+
+  const duplicatesRemoved = bullets.length - dedupedBullets.length;
+  if (duplicatesRemoved > 0) {
+    console.log(`CSV Import: Skipped ${duplicatesRemoved} duplicate bullet(s)`);
+  }
+
+  return dedupedBullets;
 };
 
 const normalizeHeader = (value: string): string => {
