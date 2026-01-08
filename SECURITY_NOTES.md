@@ -73,6 +73,32 @@ If this app were to become multi-tenant or deployed as a service, you MUST:
 
 ---
 
+## Backup Contents (v3)
+
+**Location:** `src/lib/storage.ts` - `exportAsJSON` / `importFromJSON`
+
+**Status:** ✅ All data included for cross-device restore
+
+The backup JSON includes:
+
+| Key | Storage Key | Description |
+|-----|-------------|-------------|
+| `data.subjects` | `study-tracker-data` | Subject definitions (id, name, color) |
+| `data.bullets` | `study-tracker-data` | Syllabus bullet points |
+| `data.pastPapers` | `study-tracker-data` | Past paper attempt records |
+| `data.settings` | `study-tracker-data` | App settings (AI, onboarding) |
+| `components` | `study-tracker-components` | Component metadata from CSV (paperCode, totalMarks, duration, weighting) |
+| `subjectComponents` | `study-tracker-subject-components` | Simple subject components for syllabus structure |
+| `extractionChangelogs` | `study-tracker-extraction-changelog` | AI extraction audit trail |
+
+**Cross-Device Requirements:**
+- Export produces identical JSON on tablet and laptop
+- Import restores to the exact same localStorage keys
+- Deduplication runs during import to prevent duplicates
+- Web Share API used on mobile/tablet with download fallback
+
+---
+
 ## Recommended Security Enhancements
 
 ### Priority: Medium

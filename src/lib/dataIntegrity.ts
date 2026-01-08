@@ -7,6 +7,7 @@
 import { PastPaper, Bullet } from '@/types';
 import { Component } from '@/types/components';
 
+// Use the same key as storage.ts to avoid duplication
 const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
 
 /**
