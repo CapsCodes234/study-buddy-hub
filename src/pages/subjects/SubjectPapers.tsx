@@ -3,9 +3,9 @@
  * Per-subject past papers tracking with completion and confidence
  */
 
-import { memo, useMemo, useState, useCallback } from 'react';
+import { memo, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, FileText, Plus, Save } from 'lucide-react';
+import { Search, Filter, FileText, Plus, Save, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Subject, PastPaper } from '@/types';
@@ -38,12 +45,17 @@ import { useComponents } from '@/hooks/useComponents';
 import { groupPapersByYear } from '@/lib/paperAnalytics';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
 import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
+import { EditPaperModal } from '@/components/papers/EditPaperModal';
+import { DeletePaperModal } from '@/components/papers/DeletePaperModal';
+
+export type AttemptStatus = 'started' | 'completed';
 
 interface SubjectPapersProps {
   subject: Subject;
   pastPapers: PastPaper[];
   onAddPaper: (paper: Omit<PastPaper, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdatePaper: (id: string, updates: Partial<PastPaper>) => void;
+  onDeletePaper: (id: string) => void;
 }
 
 type CompletionFilter = 'all' | 'completed' | 'incomplete';
@@ -53,6 +65,7 @@ export const SubjectPapers = memo(function SubjectPapers({
   pastPapers,
   onAddPaper,
   onUpdatePaper,
+  onDeletePaper,
 }: SubjectPapersProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -60,14 +73,24 @@ export const SubjectPapers = memo(function SubjectPapers({
   const { toast } = useToast();
   const { components } = useComponents(subject.id);
 
+  // Store deleted paper for undo
+  const deletedPaperRef = useRef<PastPaper | null>(null);
+
   // SubjectPageWrapper supplies header, icon and back button
 
   const [searchText, setSearchText] = useState('');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  
+  // Edit/Delete modals
+  const [editingPaper, setEditingPaper] = useState<PastPaper | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deletingPaper, setDeletingPaper] = useState<PastPaper | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // New paper form state
+  // New paper form state with attempt status
+  const [attemptStatus, setAttemptStatus] = useState<AttemptStatus>('completed');
   const [selectedComponentId, setSelectedComponentId] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
   const [session, setSession] = useState<PastPaper['session']>('May/June');
@@ -143,9 +166,31 @@ export const SubjectPapers = memo(function SubjectPapers({
     };
   }, [subjectPapers]);
 
+  // Form validation
+  const formErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (attemptStatus === 'completed') {
+      if (rawScore === undefined) {
+        errors.push('Raw score is required for completed attempts');
+      }
+      if (totalMarks <= 0 && selectedComponentId) {
+        errors.push('Total marks must be greater than 0');
+      }
+      if (rawScore !== undefined && rawScore > totalMarks) {
+        errors.push('Raw score cannot exceed total marks');
+      }
+    }
+    return errors;
+  }, [attemptStatus, rawScore, totalMarks, selectedComponentId]);
+
   const handleSavePaper = useCallback(() => {
-    if (!selectedComponentId || rawScore === undefined) return;
-    if (rawScore > totalMarks) return;
+    if (!selectedComponentId) return;
+    
+    // For completed attempts, validate required fields
+    if (attemptStatus === 'completed') {
+      if (rawScore === undefined) return;
+      if (rawScore > totalMarks) return;
+    }
 
     const paper: Omit<PastPaper, 'id' | 'createdAt' | 'updatedAt'> = {
       subjectId: subject.id,
@@ -154,11 +199,11 @@ export const SubjectPapers = memo(function SubjectPapers({
       session,
       paper: selectedComponent?.paperCode || '',
       variant,
-      rawScore,
+      rawScore: attemptStatus === 'completed' ? rawScore : undefined,
       totalMarks,
-      percentageScore,
+      percentageScore: attemptStatus === 'completed' ? percentageScore : undefined,
       durationUsed,
-      completed,
+      completed: attemptStatus === 'completed' ? true : completed,
       attemptDate: new Date().toISOString(),
       notes: notes || undefined,
       comment: notes || undefined,
@@ -166,12 +211,17 @@ export const SubjectPapers = memo(function SubjectPapers({
 
     onAddPaper(paper);
 
+    const statusLabel = attemptStatus === 'completed' ? 'completed' : 'started';
     toast({
       title: 'Paper Logged',
-      description: `${paper.paper} ${session} ${year}: ${rawScore}/${totalMarks} (${percentageScore ?? 0}%)`,
+      description: attemptStatus === 'completed'
+        ? `${paper.paper} ${session} ${year}: ${rawScore}/${totalMarks} (${percentageScore ?? 0}%)`
+        : `${paper.paper} ${session} ${year} marked as ${statusLabel}`,
     });
 
     setAddDialogOpen(false);
+    // Reset form
+    setAttemptStatus('completed');
     setSelectedComponentId('');
     setTotalMarks(0);
     setRawScore(undefined);
@@ -180,7 +230,67 @@ export const SubjectPapers = memo(function SubjectPapers({
     setNotes('');
     setCompleted(false);
     setVariant(undefined);
-  }, [selectedComponentId, rawScore, totalMarks, subject.id, year, session, selectedComponent, variant, percentageScore, durationUsed, notes, completed, onAddPaper, toast]);
+  }, [attemptStatus, selectedComponentId, rawScore, totalMarks, subject.id, year, session, selectedComponent, variant, percentageScore, durationUsed, notes, completed, onAddPaper, toast]);
+
+  // Edit paper handler
+  const handleEditPaper = useCallback((paper: PastPaper) => {
+    setEditingPaper(paper);
+    setEditModalOpen(true);
+  }, []);
+
+  const handleSaveEdit = useCallback((id: string, updates: Partial<PastPaper>) => {
+    onUpdatePaper(id, updates);
+    toast({
+      title: 'Paper Updated',
+      description: 'Your changes have been saved.',
+    });
+    setEditModalOpen(false);
+    setEditingPaper(null);
+  }, [onUpdatePaper, toast]);
+
+  // Delete paper handler
+  const handleDeleteClick = useCallback((paper: PastPaper) => {
+    setDeletingPaper(paper);
+    setDeleteModalOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deletingPaper) return;
+    
+    // Store for potential undo
+    deletedPaperRef.current = deletingPaper;
+    
+    const paperLabel = `${deletingPaper.paper || 'Paper'} ${deletingPaper.session} ${deletingPaper.year}`;
+    
+    onDeletePaper(deletingPaper.id);
+    setDeleteModalOpen(false);
+    setDeletingPaper(null);
+    
+    toast({
+      title: 'Paper Deleted',
+      description: `${paperLabel} has been deleted.`,
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (deletedPaperRef.current) {
+              // Re-add the paper (without id to generate new one)
+              const { id, createdAt, updatedAt, ...paperData } = deletedPaperRef.current;
+              onAddPaper(paperData);
+              toast({
+                title: 'Paper Restored',
+                description: `${paperLabel} has been restored.`,
+              });
+              deletedPaperRef.current = null;
+            }
+          }}
+        >
+          Undo
+        </Button>
+      ),
+    });
+  }, [deletingPaper, onDeletePaper, onAddPaper, toast]);
 
   const groupedPapers = useMemo(() => groupPapersByYear(filteredPapers), [filteredPapers]);
 
@@ -207,6 +317,28 @@ export const SubjectPapers = memo(function SubjectPapers({
             </DialogHeader>
 
             <div className="space-y-4 py-4 pb-24">
+              {/* Attempt Status */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Attempt Status</Label>
+                <RadioGroup
+                  value={attemptStatus}
+                  onValueChange={(v) => setAttemptStatus(v as AttemptStatus)}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="started" id="add-started" />
+                    <Label htmlFor="add-started" className="cursor-pointer font-normal">Started</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="completed" id="add-completed" />
+                    <Label htmlFor="add-completed" className="cursor-pointer font-normal">Completed</Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  {attemptStatus === 'started' ? 'Scores optional - track that you began this paper' : 'Scores required for completed attempts'}
+                </p>
+              </div>
+
               <div>
                 <Label htmlFor="component">Component *</Label>
                 <Select
@@ -349,28 +481,42 @@ export const SubjectPapers = memo(function SubjectPapers({
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="completed"
-                  checked={completed}
-                  onCheckedChange={(checked) => setCompleted(checked as boolean)}
-                />
-                <Label htmlFor="completed" className="font-normal cursor-pointer">
-                  Mark as completed
-                </Label>
-              </div>
+              {attemptStatus === 'started' && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="completed"
+                    checked={completed}
+                    onCheckedChange={(checked) => setCompleted(checked as boolean)}
+                  />
+                  <Label htmlFor="completed" className="font-normal cursor-pointer">
+                    Mark as completed
+                  </Label>
+                </div>
+              )}
+
+              {/* Validation Errors */}
+              {formErrors.length > 0 && attemptStatus === 'completed' && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <ul className="text-sm text-destructive space-y-1">
+                    {formErrors.map((error, i) => (
+                      <li key={i}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t">
-              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+            <DialogFooter className="sticky bottom-0 z-10 bg-background pt-4 border-t flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="min-h-[44px] w-full sm:w-auto">
                 Cancel
               </Button>
               <Button
                 onClick={handleSavePaper}
-                disabled={!selectedComponentId || rawScore === undefined || rawScore > totalMarks}
+                disabled={!selectedComponentId || (attemptStatus === 'completed' && (rawScore === undefined || rawScore > totalMarks))}
+                className="min-h-[44px] w-full sm:w-auto"
               >
                 <Save className="mr-2 h-4 w-4" />
-                Save Paper
+                {attemptStatus === 'started' ? 'Log Started' : 'Save Paper'}
               </Button>
             </DialogFooter>
           </DialogContent>
