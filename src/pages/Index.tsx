@@ -249,6 +249,7 @@ const Index = () => {
               pastPapers={state.pastPapers}
               onAddPaper={addPastPaper}
               onUpdatePaper={handleUpdatePaper}
+              onDeletePaper={deletePastPaper}
             />
           </Suspense>
         )}

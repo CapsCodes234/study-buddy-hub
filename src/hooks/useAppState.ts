@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Bullet, PastPaper, Status } from '@/types';
 import { loadData, saveData, generateId, clearAllAppData } from '@/lib/storage';
 import { clearCelebratedChaptersForSubject } from '@/lib/chapterCompletion';
@@ -11,6 +11,8 @@ import {
   runIntegrityScan,
   type IntegrityCheckResult
 } from '@/lib/dataIntegrity';
+
+export type ClearOption = 'syllabus' | 'papers' | 'both';
 
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => loadData());
@@ -187,14 +189,27 @@ export const useAppState = () => {
     })();
   }, []);
 
-  // Clear data for a specific subject only (bullets, papers, components, theme overrides, chapter celebrations)
-  const clearSubjectData = useCallback((subjectId: string) => {
+  // Clear data for a specific subject with selective options
+  // IMPORTANT: Does NOT delete component metadata (paper components) - only study data
+  const clearSubjectData = useCallback((subjectId: string, option: ClearOption = 'both') => {
     setState(prev => {
-      const filtered = {
-        ...prev,
-        bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
-        pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
-      };
+      let filtered = { ...prev };
+      
+      // Clear syllabus (bullets) if requested
+      if (option === 'syllabus' || option === 'both') {
+        filtered = {
+          ...filtered,
+          bullets: prev.bullets.filter(b => b.subjectId !== subjectId),
+        };
+      }
+      
+      // Clear past papers if requested
+      if (option === 'papers' || option === 'both') {
+        filtered = {
+          ...filtered,
+          pastPapers: prev.pastPapers.filter(p => p.subjectId !== subjectId),
+        };
+      }
       
       // Run integrity scan after clearing to ensure no leftover duplicates
       const scanResult = runIntegrityScan(
@@ -213,29 +228,44 @@ export const useAppState = () => {
       };
     });
     
-    // Clear subject components from localStorage
-    clearSubjectComponents(subjectId);
+    // NOTE: We intentionally do NOT clear subject components (paper metadata) here
+    // Component metadata should persist so users can still log papers after clearing
     
-    // Clear subject theme overrides from localStorage
-    try {
-      const THEME_OVERRIDES_KEY = 'subject-theme-overrides';
-      const stored = localStorage.getItem(THEME_OVERRIDES_KEY);
-      if (stored) {
-        const overrides = JSON.parse(stored);
-        if (overrides[subjectId]) {
-          delete overrides[subjectId];
-          localStorage.setItem(THEME_OVERRIDES_KEY, JSON.stringify(overrides));
-          // Notify theme provider of changes
-          window.dispatchEvent(new CustomEvent('subject-theme-updated'));
+    // Clear subject theme overrides only when clearing both
+    if (option === 'both') {
+      try {
+        const THEME_OVERRIDES_KEY = 'subject-theme-overrides';
+        const stored = localStorage.getItem(THEME_OVERRIDES_KEY);
+        if (stored) {
+          const overrides = JSON.parse(stored);
+          if (overrides[subjectId]) {
+            delete overrides[subjectId];
+            localStorage.setItem(THEME_OVERRIDES_KEY, JSON.stringify(overrides));
+            // Notify theme provider of changes
+            window.dispatchEvent(new CustomEvent('subject-theme-updated'));
+          }
         }
+      } catch {
+        // Ignore localStorage errors
       }
-    } catch {
-      // Ignore localStorage errors
+      
+      // Clear chapter completion celebrations for the subject
+      clearCelebratedChaptersForSubject(subjectId);
     }
-    
-    // Clear chapter completion celebrations for the subject
-    clearCelebratedChaptersForSubject(subjectId);
   }, []);
+  
+  // Convenience methods for clearing specific data types
+  const clearSubjectSyllabus = useCallback((subjectId: string) => {
+    clearSubjectData(subjectId, 'syllabus');
+  }, [clearSubjectData]);
+  
+  const clearSubjectPastPapers = useCallback((subjectId: string) => {
+    clearSubjectData(subjectId, 'papers');
+  }, [clearSubjectData]);
+  
+  const clearSubjectAllStudyData = useCallback((subjectId: string) => {
+    clearSubjectData(subjectId, 'both');
+  }, [clearSubjectData]);
 
   // Check data integrity (for UI display)
   const checkDataIntegrity = useCallback((): IntegrityCheckResult => {
@@ -272,6 +302,9 @@ export const useAppState = () => {
     importState,
     clearAllData,
     clearSubjectData,
+    clearSubjectSyllabus,
+    clearSubjectPastPapers,
+    clearSubjectAllStudyData,
     // Data integrity
     checkDataIntegrity,
     repairAllDuplicates,

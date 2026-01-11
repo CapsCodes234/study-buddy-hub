@@ -22,6 +22,7 @@ import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient
 import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
 import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
 import { SubjectThemeSettings } from './SubjectThemeSettings';
+import { ClearSubjectDataModal, type ClearOption } from './ClearSubjectDataModal';
 import { type IntegrityCheckResult } from '@/lib/dataIntegrity';
 import {
   Settings as SettingsIcon,
@@ -48,7 +49,7 @@ interface SettingsProps {
   onUpdateSettings: (updates: Partial<AppState['settings']>) => void;
   onImportState: (state: AppState) => void;
   onClearData: () => void;
-  onClearSubjectData?: (subjectId: string) => void;
+  onClearSubjectData?: (subjectId: string, option?: ClearOption) => void;
   onCheckIntegrity?: () => IntegrityCheckResult;
   onRepairDuplicates?: () => IntegrityCheckResult;
 }
@@ -67,7 +68,7 @@ export const Settings = ({
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [subjectClearModalOpen, setSubjectClearModalOpen] = useState(false);
-  const [pendingSubjectClear, setPendingSubjectClear] = useState<{ id: string; name: string } | null>(null);
+  const [pendingSubjectClear, setPendingSubjectClear] = useState<{ id: string; name: string; topicCount: number; paperCount: number } | null>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [aiTestMessage, setAiTestMessage] = useState('');
@@ -240,16 +241,19 @@ export const Settings = ({
   };
 
   const handleClearSubjectClick = (subjectId: string, subjectName: string) => {
-    setPendingSubjectClear({ id: subjectId, name: subjectName });
+    const { topicCount, paperCount } = getSubjectCounts(subjectId);
+    setPendingSubjectClear({ id: subjectId, name: subjectName, topicCount, paperCount });
     setSubjectClearModalOpen(true);
   };
 
-  const handleConfirmSubjectClear = () => {
+  const handleConfirmSubjectClear = (option: ClearOption) => {
     if (pendingSubjectClear && onClearSubjectData) {
-      onClearSubjectData(pendingSubjectClear.id);
+      onClearSubjectData(pendingSubjectClear.id, option);
+      
+      const optionLabel = option === 'syllabus' ? 'syllabus' : option === 'papers' ? 'past papers' : 'syllabus and past papers';
       toast({ 
         title: `Cleared ${pendingSubjectClear.name} data`,
-        description: 'Topics and past papers for this subject have been deleted.'
+        description: `${optionLabel.charAt(0).toUpperCase() + optionLabel.slice(1)} for this subject have been deleted.`
       });
     }
     setPendingSubjectClear(null);
@@ -865,16 +869,19 @@ export const Settings = ({
         onConfirm={handleConfirmReset}
       />
 
-      <ConfirmationModal
-        open={subjectClearModalOpen}
-        onOpenChange={setSubjectClearModalOpen}
-        title={`Clear ${pendingSubjectClear?.name} data?`}
-        description={`This will permanently delete all topics and past paper logs for ${pendingSubjectClear?.name}. This cannot be undone.`}
-        confirmLabel="Yes, clear"
-        cancelLabel="Cancel"
-        variant="destructive"
-        onConfirm={handleConfirmSubjectClear}
-      />
+      {pendingSubjectClear && (
+        <ClearSubjectDataModal
+          open={subjectClearModalOpen}
+          onOpenChange={(open) => {
+            setSubjectClearModalOpen(open);
+            if (!open) setPendingSubjectClear(null);
+          }}
+          subjectName={pendingSubjectClear.name}
+          topicCount={pendingSubjectClear.topicCount}
+          paperCount={pendingSubjectClear.paperCount}
+          onConfirm={handleConfirmSubjectClear}
+        />
+      )}
     </div>
   );
 };
