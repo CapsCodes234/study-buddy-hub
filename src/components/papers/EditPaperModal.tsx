@@ -239,12 +239,15 @@ export const EditPaperModal = ({
             </div>
             <div>
               <Label htmlFor="edit-variant">Variant</Label>
-              <Select value={variant || ''} onValueChange={(v) => setVariant(v as PastPaper['variant'] || undefined)}>
+              <Select 
+                value={variant || 'none'} 
+                onValueChange={(v) => setVariant(v === 'none' ? undefined : v as PastPaper['variant'])}
+              >
                 <SelectTrigger id="edit-variant" className="mt-1">
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {VARIANTS.map((v) => (
                     <SelectItem key={v} value={v}>
                       {v}
