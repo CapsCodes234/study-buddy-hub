@@ -653,18 +653,21 @@ export const SubjectPapers = memo(function SubjectPapers({
                                   paper.completed && 'bg-status-green-bg/30'
                                 )}
                               >
-                                <div>
-                                  <p className="font-medium">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
                                     {paper.paper || label?.paperCode || 'Paper'}
+                                    {!paper.completed && paper.rawScore === undefined && (
+                                      <Badge variant="outline" className="ml-2 text-xs">Started</Badge>
+                                    )}
                                   </p>
-                                  <p className="text-sm text-muted-foreground">
+                                  <p className="text-sm text-muted-foreground truncate">
                                     {label ? `${label.componentName} • ` : ''}
                                     {paper.rawScore ?? '—'}/{paper.totalMarks || '—'}
                                     {paper.durationUsed ? ` • ${paper.durationUsed} min` : ''}
                                   </p>
                                 </div>
 
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                                   <Checkbox
                                     checked={paper.completed}
                                     onCheckedChange={(checked) =>
@@ -678,6 +681,29 @@ export const SubjectPapers = memo(function SubjectPapers({
                                   >
                                     {pct}%
                                   </Badge>
+                                  
+                                  {/* Edit/Delete Actions */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                        <span className="sr-only">Actions</span>
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="bg-popover">
+                                      <DropdownMenuItem onClick={() => handleEditPaper(paper)}>
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        onClick={() => handleDeleteClick(paper)}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
                             );
@@ -691,6 +717,22 @@ export const SubjectPapers = memo(function SubjectPapers({
             ))
           )}
       </div>
+      {/* Edit Paper Modal */}
+      <EditPaperModal
+        paper={editingPaper}
+        components={components}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSave={handleSaveEdit}
+      />
+
+      {/* Delete Paper Modal */}
+      <DeletePaperModal
+        paper={deletingPaper}
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        onConfirm={handleConfirmDelete}
+      />
     </SubjectPageWrapper>
   );
 });
