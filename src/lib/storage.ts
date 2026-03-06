@@ -130,39 +130,35 @@ export const clearAllAppData = async (): Promise<void> => {
 // Storage keys for component data
 export const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
 
-// Backup format interface - version 3 includes all component stores + changelogs
+// Backup format interface - version 4 includes chapter planning
 interface BackupFormat {
   version: number;
   exportedAt: string;
   app: string;
   data: AppState;
-  // Version 2+: component metadata from CSV/PDF imports (used by useComponents hook)
-  // Stored in: study-tracker-components
   components?: Component[];
-  // Version 3+: subject components for syllabus structure
-  // Stored in: study-tracker-subject-components
   subjectComponents?: SubjectComponent[];
-  // Version 3+: extraction changelogs for audit trail
   extractionChangelogs?: ExtractionChangelog[];
+  chapterPlanning?: ChapterPlanning[];
 }
 
 // Export data as JSON for backup with versioning
-// Version 3: includes both component stores + changelogs
+// Version 4: includes chapter planning
 export const exportAsJSON = (state: AppState): string => {
-  // Load component data from BOTH storage keys
-  const components = loadAndDedupeComponents(); // study-tracker-components
-  const subjectComponents = loadSubjectComponents(); // study-tracker-subject-components  
+  const components = loadAndDedupeComponents();
+  const subjectComponents = loadSubjectComponents();
   const extractionChangelogs = getExtractionChangelogs();
+  const chapterPlanningData = loadChapterPlannings();
   
   const backup: BackupFormat = {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     app: 'study-buddy-hub',
     data: state,
-    // Only include if there's data to reduce file size
     components: components.length > 0 ? components : undefined,
     subjectComponents: subjectComponents.length > 0 ? subjectComponents : undefined,
     extractionChangelogs: extractionChangelogs.length > 0 ? extractionChangelogs : undefined,
+    chapterPlanning: chapterPlanningData.length > 0 ? chapterPlanningData : undefined,
   };
   return JSON.stringify(backup, null, 2);
 };
