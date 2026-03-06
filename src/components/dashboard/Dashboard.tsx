@@ -26,6 +26,7 @@ import {
   simulateExamReadiness,
 } from '@/lib/insights';
 import { GraduationCap, Sparkles, Target } from 'lucide-react';
+import { DeadlinesCard } from './DeadlinesCard';
 
 interface DashboardProps {
   subjects: Subject[];
@@ -169,6 +170,9 @@ export const Dashboard = memo(({
           <div className="grid gap-6 lg:grid-cols-2">
             <YearlyPerformanceCard papers={pastPapers} subjects={subjects} />
           </div>
+
+          {/* Chapter Deadlines */}
+          <DeadlinesCard subjects={subjects} bullets={bullets} />
 
           {/* Next Action Panel */}
           <NextActionPanel

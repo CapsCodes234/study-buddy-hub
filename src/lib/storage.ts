@@ -24,6 +24,12 @@ import {
   CHANGELOG_KEY,
   SUBJECT_COMPONENTS_KEY
 } from '@/lib/storage/syllabusStorage';
+import { ChapterPlanning } from '@/types/chapterPlanning';
+import {
+  loadChapterPlannings,
+  saveChapterPlannings,
+  CHAPTER_PLANNING_STORAGE_KEY,
+} from '@/lib/chapterPlanningStorage';
 
 const STORAGE_KEY = 'study-tracker-data';
 
@@ -124,39 +130,35 @@ export const clearAllAppData = async (): Promise<void> => {
 // Storage keys for component data
 export const COMPONENTS_STORAGE_KEY = 'study-tracker-components';
 
-// Backup format interface - version 3 includes all component stores + changelogs
+// Backup format interface - version 4 includes chapter planning
 interface BackupFormat {
   version: number;
   exportedAt: string;
   app: string;
   data: AppState;
-  // Version 2+: component metadata from CSV/PDF imports (used by useComponents hook)
-  // Stored in: study-tracker-components
   components?: Component[];
-  // Version 3+: subject components for syllabus structure
-  // Stored in: study-tracker-subject-components
   subjectComponents?: SubjectComponent[];
-  // Version 3+: extraction changelogs for audit trail
   extractionChangelogs?: ExtractionChangelog[];
+  chapterPlanning?: ChapterPlanning[];
 }
 
 // Export data as JSON for backup with versioning
-// Version 3: includes both component stores + changelogs
+// Version 4: includes chapter planning
 export const exportAsJSON = (state: AppState): string => {
-  // Load component data from BOTH storage keys
-  const components = loadAndDedupeComponents(); // study-tracker-components
-  const subjectComponents = loadSubjectComponents(); // study-tracker-subject-components  
+  const components = loadAndDedupeComponents();
+  const subjectComponents = loadSubjectComponents();
   const extractionChangelogs = getExtractionChangelogs();
+  const chapterPlanningData = loadChapterPlannings();
   
   const backup: BackupFormat = {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     app: 'study-buddy-hub',
     data: state,
-    // Only include if there's data to reduce file size
     components: components.length > 0 ? components : undefined,
     subjectComponents: subjectComponents.length > 0 ? subjectComponents : undefined,
     extractionChangelogs: extractionChangelogs.length > 0 ? extractionChangelogs : undefined,
+    chapterPlanning: chapterPlanningData.length > 0 ? chapterPlanningData : undefined,
   };
   return JSON.stringify(backup, null, 2);
 };
@@ -259,6 +261,7 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
     let importedComponents: Component[] = [];
     let importedSubjectComponents: SubjectComponent[] = [];
     let importedChangelogs: ExtractionChangelog[] = [];
+    let importedChapterPlanning: ChapterPlanning[] = [];
     let backupVersion = 0;
 
     if (typeof parsed === 'object' && parsed !== null) {
@@ -279,6 +282,10 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
         // Extract extractionChangelogs from v3+ backups
         if (Array.isArray(obj.extractionChangelogs)) {
           importedChangelogs = obj.extractionChangelogs as ExtractionChangelog[];
+        }
+        // Extract chapterPlanning from v4+ backups
+        if (Array.isArray(obj.chapterPlanning)) {
+          importedChapterPlanning = obj.chapterPlanning as ChapterPlanning[];
         }
       } else {
         // Legacy format: raw AppState (treat as version 0)
@@ -390,6 +397,18 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
         localStorage.setItem(CHANGELOG_KEY, JSON.stringify(merged));
       } catch (e) {
         console.warn('Failed to restore extraction changelogs:', e);
+      }
+    }
+
+    // Handle chapterPlanning from v4+ backups
+    if (importedChapterPlanning.length > 0) {
+      const existing = loadChapterPlannings();
+      const existingKeys = new Set(existing.map(p => `${p.subjectId}|${p.chapterKey}`));
+      const newPlannings = importedChapterPlanning.filter(
+        p => !existingKeys.has(`${p.subjectId}|${p.chapterKey}`)
+      );
+      if (newPlannings.length > 0) {
+        saveChapterPlannings([...existing, ...newPlannings]);
       }
     }
 
