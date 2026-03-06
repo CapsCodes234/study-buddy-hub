@@ -400,6 +400,18 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
       }
     }
 
+    // Handle chapterPlanning from v4+ backups
+    if (importedChapterPlanning.length > 0) {
+      const existing = loadChapterPlannings();
+      const existingKeys = new Set(existing.map(p => `${p.subjectId}|${p.chapterKey}`));
+      const newPlannings = importedChapterPlanning.filter(
+        p => !existingKeys.has(`${p.subjectId}|${p.chapterKey}`)
+      );
+      if (newPlannings.length > 0) {
+        saveChapterPlannings([...existing, ...newPlannings]);
+      }
+    }
+
     // Post-import verification: check if subjects have components in EITHER store
     const allSubjectComponents = loadSubjectComponents();
     const allComponents = loadAndDedupeComponents();
