@@ -24,6 +24,12 @@ import {
   CHANGELOG_KEY,
   SUBJECT_COMPONENTS_KEY
 } from '@/lib/storage/syllabusStorage';
+import { ChapterPlanning } from '@/types/chapterPlanning';
+import {
+  loadChapterPlannings,
+  saveChapterPlannings,
+  CHAPTER_PLANNING_STORAGE_KEY,
+} from '@/lib/chapterPlanningStorage';
 
 const STORAGE_KEY = 'study-tracker-data';
 
