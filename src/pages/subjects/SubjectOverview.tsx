@@ -381,6 +381,72 @@ export const SubjectOverview = memo(function SubjectOverview({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Chapter Deadlines Card */}
+      {(() => {
+        const plannings = getSubjectPlannings(subject.id);
+        const subjectBullets = bullets.filter(b => b.subjectId === subject.id);
+        const chapterMap = new Map<string, { total: number; confident: number }>();
+        subjectBullets.forEach(b => {
+          const s = chapterMap.get(b.mainTopic) || { total: 0, confident: 0 };
+          s.total++;
+          if (statusToConfidence(b.status, b.done) === 'confident') s.confident++;
+          chapterMap.set(b.mainTopic, s);
+        });
+
+        const upcoming = plannings
+          .filter(p => p.completeBy)
+          .map(p => {
+            const stats = chapterMap.get(p.chapterTitle);
+            const isComplete = stats ? stats.total > 0 && stats.confident === stats.total : false;
+            return { ...p, deadline: getDeadlineInfo(p.completeBy, isComplete) };
+          })
+          .filter(p => p.deadline.status !== 'completed' && p.deadline.status !== 'no_deadline')
+          .sort((a, b) => (a.deadline.daysRemaining ?? 0) - (b.deadline.daysRemaining ?? 0))
+          .slice(0, 3);
+
+        const totalChapters = chapterMap.size;
+        const completedChapters = Array.from(chapterMap.values()).filter(s => s.total > 0 && s.confident === s.total).length;
+
+        if (totalChapters === 0) return null;
+
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                Chapter Deadlines
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                {completedChapters} / {totalChapters} chapters completed
+              </div>
+              {upcoming.length > 0 ? (
+                <div className="space-y-2">
+                  {upcoming.map(p => (
+                    <div key={p.chapterKey} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <span className="text-sm font-medium truncate flex-1">{p.chapterTitle}</span>
+                      <DeadlineBadge deadline={p.deadline} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No upcoming deadlines</p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full min-h-[44px]"
+                onClick={() => navigate(`/${subject.id}/syllabus`)}
+              >
+                Plan deadlines
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Next Action Panel */}
       <NextActionPanel
         subjects={allSubjects}
