@@ -39,6 +39,10 @@ import { generatePreview, parseCSV, type CSVImportResult } from '@/lib/csvImport
 import { useComponents } from '@/hooks/useComponents';
 import { SubjectTabs } from '@/components/layout/SubjectTabs';
 import { SubjectPageWrapper } from '@/components/layout/SubjectPageWrapper';
+import { getSubjectPlannings } from '@/lib/chapterPlanningStorage';
+import { getDeadlineInfo, normalizeChapterKey } from '@/types/chapterPlanning';
+import { DeadlineBadge } from '@/components/syllabus/DeadlineBadge';
+import { CalendarClock } from 'lucide-react';
 
 interface SubjectOverviewProps {
   subject: Subject;
