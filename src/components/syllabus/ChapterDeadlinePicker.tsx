@@ -48,7 +48,7 @@ export const ChapterDeadlinePicker = memo(function ChapterDeadlinePicker({
           size={compact ? 'icon' : 'sm'}
           className={cn(
             'min-h-[44px] gap-1.5 text-xs',
-            compact ? 'h-9 w-9' : 'h-9',
+            compact ? 'min-h-[44px] min-w-[44px]' : 'h-9',
             !value && 'text-muted-foreground'
           )}
         >
@@ -56,7 +56,13 @@ export const ChapterDeadlinePicker = memo(function ChapterDeadlinePicker({
           {!compact && (value ? format(selectedDate!, 'MMM d') : 'Set deadline')}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end" sideOffset={4}>
+      <PopoverContent
+        className="w-auto p-0"
+        align="end"
+        sideOffset={4}
+        collisionPadding={16}
+        avoidCollisions
+      >
         <div className="p-2 border-b flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">Complete by</span>
           {value && (

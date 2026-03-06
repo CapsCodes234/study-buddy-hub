@@ -367,7 +367,7 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
 
     // Handle subjectComponents from v3+ backups - merge with existing and deduplicate
     // These are stored in study-tracker-subject-components
-    let subjectComponentResult = { count: 0, duplicatesRemoved: 0 };
+    const subjectComponentResult = { count: 0, duplicatesRemoved: 0 };
     const warnings: string[] = [];
     
     if (importedSubjectComponents.length > 0) {

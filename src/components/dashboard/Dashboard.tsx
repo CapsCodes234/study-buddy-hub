@@ -155,6 +155,13 @@ export const Dashboard = memo(({
       {/* Tier 1: Baseline-friendly components (always visible when subjects exist) */}
       {hasSubjects && (
         <>
+          {/* Chapter Deadlines - Top priority: visible at start */}
+          <DeadlinesCard
+            subjects={subjects}
+            bullets={bullets}
+            onNavigate={onNavigate}
+          />
+
           {/* Phase 4: Global Readiness Score - Top KPI */}
           <GlobalReadinessScore readiness={readinessScore} />
 
@@ -170,9 +177,6 @@ export const Dashboard = memo(({
           <div className="grid gap-6 lg:grid-cols-2">
             <YearlyPerformanceCard papers={pastPapers} subjects={subjects} />
           </div>
-
-          {/* Chapter Deadlines */}
-          <DeadlinesCard subjects={subjects} bullets={bullets} />
 
           {/* Next Action Panel */}
           <NextActionPanel

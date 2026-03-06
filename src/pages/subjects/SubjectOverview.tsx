@@ -387,16 +387,17 @@ export const SubjectOverview = memo(function SubjectOverview({
         const subjectBullets = bullets.filter(b => b.subjectId === subject.id);
         const chapterMap = new Map<string, { total: number; confident: number }>();
         subjectBullets.forEach(b => {
-          const s = chapterMap.get(b.mainTopic) || { total: 0, confident: 0 };
+          const key = normalizeChapterKey(b.mainTopic);
+          const s = chapterMap.get(key) || { total: 0, confident: 0 };
           s.total++;
           if (statusToConfidence(b.status, b.done) === 'confident') s.confident++;
-          chapterMap.set(b.mainTopic, s);
+          chapterMap.set(key, s);
         });
 
         const upcoming = plannings
           .filter(p => p.completeBy)
           .map(p => {
-            const stats = chapterMap.get(p.chapterTitle);
+            const stats = chapterMap.get(p.chapterKey);
             const isComplete = stats ? stats.total > 0 && stats.confident === stats.total : false;
             return { ...p, deadline: getDeadlineInfo(p.completeBy, isComplete) };
           })
