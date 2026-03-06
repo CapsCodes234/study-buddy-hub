@@ -171,6 +171,9 @@ export const Dashboard = memo(({
             <YearlyPerformanceCard papers={pastPapers} subjects={subjects} />
           </div>
 
+          {/* Chapter Deadlines */}
+          <DeadlinesCard subjects={subjects} bullets={bullets} />
+
           {/* Next Action Panel */}
           <NextActionPanel
             subjects={subjects}
