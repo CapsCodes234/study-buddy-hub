@@ -261,6 +261,7 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
     let importedComponents: Component[] = [];
     let importedSubjectComponents: SubjectComponent[] = [];
     let importedChangelogs: ExtractionChangelog[] = [];
+    let importedChapterPlanning: ChapterPlanning[] = [];
     let backupVersion = 0;
 
     if (typeof parsed === 'object' && parsed !== null) {
