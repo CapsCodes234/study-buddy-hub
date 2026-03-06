@@ -283,6 +283,10 @@ export const importFromJSON = (jsonString: string, existingState?: AppState): Im
         if (Array.isArray(obj.extractionChangelogs)) {
           importedChangelogs = obj.extractionChangelogs as ExtractionChangelog[];
         }
+        // Extract chapterPlanning from v4+ backups
+        if (Array.isArray(obj.chapterPlanning)) {
+          importedChapterPlanning = obj.chapterPlanning as ChapterPlanning[];
+        }
       } else {
         // Legacy format: raw AppState (treat as version 0)
         appStateData = parsed;
