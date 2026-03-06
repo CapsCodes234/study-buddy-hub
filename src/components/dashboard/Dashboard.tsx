@@ -26,6 +26,7 @@ import {
   simulateExamReadiness,
 } from '@/lib/insights';
 import { GraduationCap, Sparkles, Target } from 'lucide-react';
+import { DeadlinesCard } from './DeadlinesCard';
 
 interface DashboardProps {
   subjects: Subject[];
