@@ -66,13 +66,14 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
   bullets,
   onUpdateBullet,
 }: SubjectSyllabusProps) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
 
   const [searchText, setSearchText] = useState('');
   const [filterState, setFilterState] = useState<FilterState>('all');
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>('all');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
+  const [highlightedChapterKey, setHighlightedChapterKey] = useState<string | null>(null);
   
   // Force re-render when deadlines change
   const [deadlineVersion, setDeadlineVersion] = useState(0);
@@ -216,6 +217,59 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
       progress: subjectBullets.length > 0 ? (confident / subjectBullets.length) * 100 : 0,
     };
   }, [bullets, subject.id]);
+
+  // Map normalized chapterKey -> mainTopic for deep-link navigation
+  const chapterKeyToMainTopic = useMemo(() => {
+    const map = new Map<string, string>();
+    const subjectBullets = bullets.filter((b) => b.subjectId === subject.id);
+    subjectBullets.forEach((b) => {
+      const key = normalizeChapterKey(b.mainTopic);
+      if (!map.has(key)) {
+        map.set(key, b.mainTopic);
+      }
+    });
+    return map;
+  }, [bullets, subject.id]);
+
+  // Deep-link handling: ?chapter=<chapterKey>
+  useEffect(() => {
+    const chapterKey = searchParams.get('chapter');
+    if (!chapterKey) return;
+
+    const mainTopic = chapterKeyToMainTopic.get(chapterKey);
+    if (!mainTopic) return;
+
+    setExpandedTopics(new Set([mainTopic]));
+
+    const element = document.getElementById(`chapter-${chapterKey}`);
+    if (element) {
+      const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      window.requestAnimationFrame(() => {
+        element.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'start',
+        });
+      });
+      setHighlightedChapterKey(chapterKey);
+      const timeout = window.setTimeout(() => {
+        setHighlightedChapterKey((current) => (current === chapterKey ? null : current));
+      }, 1500);
+      return () => {
+        window.clearTimeout(timeout);
+      };
+    }
+
+  }, [searchParams, chapterKeyToMainTopic, setExpandedTopics]);
+
+  // After handling once, remove ?chapter to avoid repeated animations on refresh
+  useEffect(() => {
+    const chapterKey = searchParams.get('chapter');
+    if (!chapterKey) return;
+
+    const params = new URLSearchParams(searchParams);
+    params.delete('chapter');
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Check for newly completed chapters and celebrate (with deadline awareness)
   useEffect(() => {
@@ -490,13 +544,15 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
             const chapterKey = normalizeChapterKey(mainTopic);
             const completeBy = planningsMap.get(chapterKey);
             const deadlineInfo = getDeadlineInfo(completeBy, isChapterComplete);
+            const isHighlightedChapter = highlightedChapterKey === chapterKey;
 
             return (
               <Card
                 key={mainTopic}
                 className={cn(
                   'overflow-hidden transition-all duration-300',
-                  isChapterComplete && 'ring-2 ring-status-green/30 bg-status-green-bg/20'
+                  isChapterComplete && 'ring-2 ring-status-green/30 bg-status-green-bg/20',
+                  isHighlightedChapter && 'ring-2 ring-primary/60 ring-offset-2'
                 )}
               >
                 <Collapsible
@@ -504,7 +560,10 @@ export const SubjectSyllabus = memo(function SubjectSyllabus({
                   onOpenChange={() => toggleTopic(mainTopic)}
                 >
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+                    <CardHeader
+                      id={`chapter-${chapterKey}`}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors py-3"
+                    >
                       <div className="flex flex-col md:flex-row md:items-center gap-2">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           {expandedTopics.has(mainTopic) ? (

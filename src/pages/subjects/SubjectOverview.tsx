@@ -402,8 +402,7 @@ export const SubjectOverview = memo(function SubjectOverview({
             return { ...p, deadline: getDeadlineInfo(p.completeBy, isComplete) };
           })
           .filter(p => p.deadline.status !== 'completed' && p.deadline.status !== 'no_deadline')
-          .sort((a, b) => (a.deadline.daysRemaining ?? 0) - (b.deadline.daysRemaining ?? 0))
-          .slice(0, 3);
+          .sort((a, b) => (a.deadline.daysRemaining ?? 0) - (b.deadline.daysRemaining ?? 0));
 
         const totalChapters = chapterMap.size;
         const completedChapters = Array.from(chapterMap.values()).filter(s => s.total > 0 && s.confident === s.total).length;
@@ -411,33 +410,53 @@ export const SubjectOverview = memo(function SubjectOverview({
         if (totalChapters === 0) return null;
 
         return (
-          <Card>
-            <CardHeader className="pb-2">
+          <Card className="max-h-[340px] flex flex-col overflow-hidden">
+            <CardHeader className="pb-2 shrink-0">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-primary" />
                 Chapter Deadlines
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 flex-1 flex flex-col pt-0">
               <div className="text-sm text-muted-foreground">
                 {completedChapters} / {totalChapters} chapters completed
               </div>
               {upcoming.length > 0 ? (
-                <div className="space-y-2">
-                  {upcoming.map(p => (
-                    <div key={p.chapterKey} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                      <span className="text-sm font-medium truncate flex-1">{p.chapterTitle}</span>
-                      <DeadlineBadge deadline={p.deadline} />
+                <div className="relative flex-1 min-h-0 flex flex-col">
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-card/95 to-transparent z-[1]" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-card/95 to-transparent z-[1]" />
+                  <div
+                    className={cn(
+                      'overflow-y-auto overscroll-contain scrollbar-thin pr-1 pt-1 pb-2',
+                      'touch-pan-y [-webkit-overflow-scrolling:touch]',
+                      'max-h-[180px] sm:max-h-[220px] md:max-h-[240px]'
+                    )}
+                  >
+                    <div className="space-y-2">
+                    {upcoming.map(p => (
+                      <button
+                        key={p.chapterKey}
+                        type="button"
+                        className={cn(
+                          'flex items-center justify-between p-2 rounded-lg bg-muted/30 min-h-[44px] w-full text-left cursor-pointer',
+                          'hover:bg-muted/60 active:scale-[0.99] transition-colors motion-reduce:active:scale-100'
+                        )}
+                        onClick={() => navigate(`/${subject.id}/syllabus?chapter=${p.chapterKey}`)}
+                      >
+                        <span className="text-sm font-medium truncate flex-1 mr-2">{p.chapterTitle}</span>
+                        <DeadlineBadge deadline={p.deadline} />
+                      </button>
+                    ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground">No upcoming deadlines</p>
+                <p className="text-xs text-muted-foreground flex-1 flex items-center">No upcoming deadlines</p>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full min-h-[44px]"
+                className="w-full min-h-[44px] mt-1"
                 onClick={() => navigate(`/${subject.id}/syllabus`)}
               >
                 Plan deadlines
