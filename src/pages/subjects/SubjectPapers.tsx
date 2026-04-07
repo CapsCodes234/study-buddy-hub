@@ -304,6 +304,30 @@ export const SubjectPapers = memo(function SubjectPapers({
 
   const groupedPapers = useMemo(() => groupPapersByYear(filteredPapers), [filteredPapers]);
 
+  const handleViewChange = useCallback((view: string) => {
+    setActiveView(view as PapersView);
+    const params = new URLSearchParams(searchParams);
+    if (view === 'components') {
+      params.set('view', 'components');
+    } else {
+      params.delete('view');
+    }
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleLogAttemptForComponent = useCallback((componentId: string) => {
+    setSelectedComponentId(componentId);
+    const comp = components.find((c) => c.id === componentId);
+    if (comp) setTotalMarks(comp.totalMarks);
+    setActiveView('attempts');
+    setAddDialogOpen(true);
+  }, [components]);
+
+  const handleFilterByComponent = useCallback((componentId: string) => {
+    setComponentFilter(componentId);
+    handleViewChange('attempts');
+  }, [handleViewChange]);
+
   return (
     <SubjectPageWrapper
       subjectId={subject.id}
