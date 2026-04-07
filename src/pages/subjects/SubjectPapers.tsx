@@ -157,7 +157,7 @@ export const SubjectPapers = memo(function SubjectPapers({
       if (b.year !== a.year) return b.year - a.year;
       return a.session.localeCompare(b.session);
     });
-  }, [subjectPapers, searchText, completionFilter, yearFilter, components]);
+  }, [subjectPapers, searchText, completionFilter, yearFilter, componentFilter, components]);
 
   // Stats
   const stats = useMemo(() => {
