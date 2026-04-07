@@ -61,6 +61,7 @@ interface SubjectPapersProps {
 }
 
 type CompletionFilter = 'all' | 'completed' | 'incomplete';
+type PapersView = 'attempts' | 'components';
 
 export const SubjectPapers = memo(function SubjectPapers({
   subject,
