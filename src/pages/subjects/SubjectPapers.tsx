@@ -85,6 +85,8 @@ export const SubjectPapers = memo(function SubjectPapers({
   const [searchText, setSearchText] = useState('');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  const [componentFilter, setComponentFilter] = useState<string>('all');
+  const [activeView, setActiveView] = useState<PapersView>(initialView);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   
   // Edit/Delete modals
