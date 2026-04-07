@@ -795,6 +795,9 @@ export const SubjectPapers = memo(function SubjectPapers({
             ))
           )}
       </div>
+        </>
+      )}
+
       {/* Edit Paper Modal */}
       <EditPaperModal
         paper={editingPaper}
