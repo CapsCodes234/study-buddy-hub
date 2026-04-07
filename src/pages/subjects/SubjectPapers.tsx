@@ -71,8 +71,9 @@ export const SubjectPapers = memo(function SubjectPapers({
   onDeletePaper,
 }: SubjectPapersProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
+  const initialView = (searchParams.get('view') as PapersView) || 'attempts';
   const { toast } = useToast();
   const { components } = useComponents(subject.id);
 
