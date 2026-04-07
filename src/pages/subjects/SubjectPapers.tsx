@@ -5,8 +5,10 @@
 
 import { memo, useMemo, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, FileText, Plus, Save, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Search, Filter, FileText, Plus, Save, Edit, Trash2, MoreVertical, BarChart3, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ComponentAnalyzer } from '@/components/papers/ComponentAnalyzer';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -59,6 +61,7 @@ interface SubjectPapersProps {
 }
 
 type CompletionFilter = 'all' | 'completed' | 'incomplete';
+type PapersView = 'attempts' | 'components';
 
 export const SubjectPapers = memo(function SubjectPapers({
   subject,
@@ -68,8 +71,9 @@ export const SubjectPapers = memo(function SubjectPapers({
   onDeletePaper,
 }: SubjectPapersProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
+  const initialView = (searchParams.get('view') as PapersView) || 'attempts';
   const { toast } = useToast();
   const { components } = useComponents(subject.id);
 
@@ -81,6 +85,8 @@ export const SubjectPapers = memo(function SubjectPapers({
   const [searchText, setSearchText] = useState('');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
+  const [componentFilter, setComponentFilter] = useState<string>('all');
+  const [activeView, setActiveView] = useState<PapersView>(initialView);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   
   // Edit/Delete modals
@@ -142,12 +148,16 @@ export const SubjectPapers = memo(function SubjectPapers({
       filtered = filtered.filter((p) => p.year === parseInt(yearFilter));
     }
 
+    if (componentFilter !== 'all') {
+      filtered = filtered.filter((p) => p.componentId === componentFilter);
+    }
+
     // Sort by year desc, then session
     return filtered.sort((a, b) => {
       if (b.year !== a.year) return b.year - a.year;
       return a.session.localeCompare(b.session);
     });
-  }, [subjectPapers, searchText, completionFilter, yearFilter, components]);
+  }, [subjectPapers, searchText, completionFilter, yearFilter, componentFilter, components]);
 
   // Stats
   const stats = useMemo(() => {
@@ -293,6 +303,30 @@ export const SubjectPapers = memo(function SubjectPapers({
   }, [deletingPaper, onDeletePaper, onAddPaper, toast]);
 
   const groupedPapers = useMemo(() => groupPapersByYear(filteredPapers), [filteredPapers]);
+
+  const handleViewChange = useCallback((view: string) => {
+    setActiveView(view as PapersView);
+    const params = new URLSearchParams(searchParams);
+    if (view === 'components') {
+      params.set('view', 'components');
+    } else {
+      params.delete('view');
+    }
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const handleLogAttemptForComponent = useCallback((componentId: string) => {
+    setSelectedComponentId(componentId);
+    const comp = components.find((c) => c.id === componentId);
+    if (comp) setTotalMarks(comp.totalMarks);
+    setActiveView('attempts');
+    setAddDialogOpen(true);
+  }, [components]);
+
+  const handleFilterByComponent = useCallback((componentId: string) => {
+    setComponentFilter(componentId);
+    handleViewChange('attempts');
+  }, [handleViewChange]);
 
   return (
     <SubjectPageWrapper
@@ -525,67 +559,111 @@ export const SubjectPapers = memo(function SubjectPapers({
 
       <SubjectTabs subjectId={subject.id} />
 
-      {/* Progress Bar */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Papers Completed</span>
-            <div className="flex items-center gap-4">
-              {stats.avgScore !== null && (
-                <span className="text-sm text-muted-foreground">
-                  Avg Score: {Math.round(stats.avgScore)}%
-                </span>
-              )}
-              <span className="text-sm text-muted-foreground">
-                {stats.completed} / {stats.total}
-              </span>
-            </div>
-          </div>
-          <Progress value={stats.progress} className="h-2" />
-        </CardContent>
-      </Card>
+      {/* View Toggle */}
+      <Tabs value={activeView} onValueChange={handleViewChange}>
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="attempts" className="min-h-[44px] gap-2 flex-1 sm:flex-initial">
+            <List className="h-4 w-4" />
+            Attempts
+          </TabsTrigger>
+          <TabsTrigger value="components" className="min-h-[44px] gap-2 flex-1 sm:flex-initial">
+            <BarChart3 className="h-4 w-4" />
+            Components
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search papers..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="pl-9"
+      {activeView === 'components' ? (
+        <div className="space-y-4">
+          <ComponentAnalyzer
+            subject={subject}
+            pastPapers={pastPapers}
+            components={components}
+            onLogAttempt={handleLogAttemptForComponent}
+            onFilterByComponent={handleFilterByComponent}
           />
         </div>
-        <div className="flex gap-2">
-          <Select
-            value={completionFilter}
-            onValueChange={(v) => setCompletionFilter(v as CompletionFilter)}
-          >
-            <SelectTrigger className="w-[130px] sm:w-[150px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Papers</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="incomplete">Not Done</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={yearFilter} onValueChange={setYearFilter}>
-          <SelectTrigger className="w-[100px] sm:w-[120px]">
-            <SelectValue placeholder="Year" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
-            {availableYears.map((year) => (
-              <SelectItem key={year} value={String(year)}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        </div>
-      </div>
+      ) : (
+        <>
+          {/* Progress Bar */}
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Papers Completed</span>
+                <div className="flex items-center gap-4">
+                  {stats.avgScore !== null && (
+                    <span className="text-sm text-muted-foreground">
+                      Avg Score: {Math.round(stats.avgScore)}%
+                    </span>
+                  )}
+                  <span className="text-sm text-muted-foreground">
+                    {stats.completed} / {stats.total}
+                  </span>
+                </div>
+              </div>
+              <Progress value={stats.progress} className="h-2" />
+            </CardContent>
+          </Card>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search papers..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={completionFilter}
+                onValueChange={(v) => setCompletionFilter(v as CompletionFilter)}
+              >
+                <SelectTrigger className="w-[130px] sm:w-[150px]">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Papers</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="incomplete">Not Done</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={yearFilter} onValueChange={setYearFilter}>
+                <SelectTrigger className="w-[100px] sm:w-[120px]">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {availableYears.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={componentFilter} onValueChange={setComponentFilter}>
+                <SelectTrigger className="w-[140px] sm:w-[160px]">
+                  <SelectValue placeholder="Component" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Components</SelectItem>
+                  {components.map((comp) => (
+                    <SelectItem key={comp.id} value={comp.id}>
+                      {comp.paperCode} - {comp.componentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {componentFilter !== 'all' && (
+                <Button variant="ghost" size="sm" className="min-h-[44px]" onClick={() => setComponentFilter('all')}>
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
 
       {/* Papers List */}
       <div className="space-y-6 pb-8">
@@ -717,6 +795,9 @@ export const SubjectPapers = memo(function SubjectPapers({
             ))
           )}
       </div>
+        </>
+      )}
+
       {/* Edit Paper Modal */}
       <EditPaperModal
         paper={editingPaper}
