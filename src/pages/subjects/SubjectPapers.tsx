@@ -148,6 +148,10 @@ export const SubjectPapers = memo(function SubjectPapers({
       filtered = filtered.filter((p) => p.year === parseInt(yearFilter));
     }
 
+    if (componentFilter !== 'all') {
+      filtered = filtered.filter((p) => p.componentId === componentFilter);
+    }
+
     // Sort by year desc, then session
     return filtered.sort((a, b) => {
       if (b.year !== a.year) return b.year - a.year;
