@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ComponentStat } from '@/lib/componentAnalytics';
-import { isAIConfigured, getAIClient } from '@/ai/aiClient';
+import { isAIConfigured, getAIProviderWithFallback } from '@/ai/aiClient';
 
 interface ComponentDetailsModalProps {
   stat: ComponentStat | null;
