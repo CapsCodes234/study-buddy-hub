@@ -50,7 +50,7 @@ Average: ${stat.avgPercentage ?? 'N/A'}%, Best: ${stat.bestPercentage ?? 'N/A'}%
 Trend: ${stat.trend ?? 'unknown'}
 Time efficiency: ${stat.timeEfficiency !== null ? (stat.timeEfficiency <= 1 ? 'within time' : 'over time') : 'unknown'}
 Return ONLY a JSON array of strings, e.g. ["suggestion 1", "suggestion 2"]`;
-      const response = await client.generateText(prompt, { temperature: 0.5, maxTokens: 500 });
+      const response = await provider.generateText(prompt, { temperature: 0.5, maxTokens: 500 });
       const parsed = JSON.parse(response);
       if (Array.isArray(parsed)) {
         setAiInsights(parsed.slice(0, 4).map(String));
