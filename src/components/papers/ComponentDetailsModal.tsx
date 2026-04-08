@@ -42,7 +42,7 @@ export function ComponentDetailsModal({
     if (!stat || aiLoading) return;
     setAiLoading(true);
     try {
-      const client = getAIClient();
+      const { provider } = getAIProviderWithFallback();
       const prompt = `Analyze this exam component performance and give 2-4 concise bullet-point suggestions for improvement.
 Component: ${stat.paperCode} ${stat.componentName}
 Attempts: ${stat.totalAttempts} total, ${stat.completedAttempts} completed
