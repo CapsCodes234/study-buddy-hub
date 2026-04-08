@@ -168,6 +168,41 @@ Return ONLY a JSON array of strings, e.g. ["suggestion 1", "suggestion 2"]`;
           </div>
         </ScrollArea>
 
+        {/* AI Insights */}
+        {aiEnabled && (
+          <div className="space-y-2">
+            {!aiInsights && !aiLoading && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full min-h-[44px]"
+                onClick={generateInsights}
+              >
+                <Sparkles className="h-4 w-4 mr-2 text-primary" />
+                AI Insight
+              </Button>
+            )}
+            {aiLoading && (
+              <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating insights…
+              </div>
+            )}
+            {aiInsights && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" /> AI Suggestions
+                </p>
+                <ul className="text-sm space-y-1 list-disc list-inside">
+                  {aiInsights.map((insight, i) => (
+                    <li key={i}>{insight}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
           <Button

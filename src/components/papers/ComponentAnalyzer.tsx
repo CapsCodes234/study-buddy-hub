@@ -95,24 +95,31 @@ export function ComponentAnalyzer({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {/* Desktop/tablet table header */}
-          <div className="hidden md:grid grid-cols-[1fr_80px_80px_80px_80px_80px_60px] gap-2 px-4 py-2 text-xs font-medium text-muted-foreground border-b bg-muted/30">
-            <span>Component</span>
-            <span className="text-center">Attempts</span>
-            <span className="text-center">Avg %</span>
-            <span className="text-center">Best %</span>
-            <span className="text-center">Latest %</span>
-            <span className="text-center">Completion</span>
-            <span className="text-center">Trend</span>
+          {/* Desktop/tablet table header — sticky inside scroll area */}
+          <div className="relative">
+            {/* Top gradient fade */}
+            <div className="pointer-events-none absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-card to-transparent z-10 hidden" id="analyzer-fade-top" />
+            <ScrollArea className="max-h-[420px]">
+              <div className="hidden md:grid grid-cols-[1fr_80px_80px_80px_80px_80px_60px] gap-2 px-4 py-2 text-xs font-medium text-muted-foreground border-b bg-muted/30 sticky top-0 z-10">
+                <span>Component</span>
+                <span className="text-center">Attempts</span>
+                <span className="text-center">Avg %</span>
+                <span className="text-center">Best %</span>
+                <span className="text-center">Latest %</span>
+                <span className="text-center">Completion</span>
+                <span className="text-center">Trend</span>
+              </div>
+              <div className="divide-y">
+                {stats.map((stat) => (
+                  <ComponentRow key={stat.componentId} stat={stat} onClick={() => handleRowClick(stat)} />
+                ))}
+              </div>
+            </ScrollArea>
+            {/* Bottom gradient fade */}
+            {stats.length > 5 && (
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-card to-transparent z-10" />
+            )}
           </div>
-
-          <ScrollArea className="max-h-[420px]">
-            <div className="divide-y">
-              {stats.map((stat) => (
-                <ComponentRow key={stat.componentId} stat={stat} onClick={() => handleRowClick(stat)} />
-              ))}
-            </div>
-          </ScrollArea>
         </CardContent>
       </Card>
 
