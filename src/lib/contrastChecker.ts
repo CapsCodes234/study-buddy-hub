@@ -138,7 +138,7 @@ export function checkContrast(foregroundHSL: string, backgroundHSL: string): Con
  * Validate all subject theme colors in development mode
  */
 export function validateSubjectThemes(): void {
-  if (process.env.NODE_ENV !== 'development') return;
+  if (import.meta.env?.MODE !== 'development') return;
   
   console.group('🎨 Subject Theme Contrast Validation');
   

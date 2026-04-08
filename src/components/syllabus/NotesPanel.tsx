@@ -33,7 +33,7 @@ export const NotesPanel = memo(function NotesPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isDirty, setIsDirty] = useState(false);
-  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Initialize notes when bullet changes
