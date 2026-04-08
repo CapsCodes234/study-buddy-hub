@@ -2,9 +2,9 @@
  * Component Details Modal — shows attempt history for a single component
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { format } from 'date-fns';
-import { TrendingUp, TrendingDown, Minus, Clock, Target, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, Target, BarChart3, Sparkles, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ComponentStat } from '@/lib/componentAnalytics';
+import { isAIConfigured, getAIClient } from '@/ai/aiClient';
 
 interface ComponentDetailsModalProps {
   stat: ComponentStat | null;
