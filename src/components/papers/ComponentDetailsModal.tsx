@@ -34,6 +34,34 @@ export function ComponentDetailsModal({
   onLogAttempt,
   onFilterByComponent,
 }: ComponentDetailsModalProps) {
+  const [aiInsights, setAiInsights] = useState<string[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiEnabled = isAIConfigured();
+
+  const generateInsights = useCallback(async () => {
+    if (!stat || aiLoading) return;
+    setAiLoading(true);
+    try {
+      const client = getAIClient();
+      const prompt = `Analyze this exam component performance and give 2-4 concise bullet-point suggestions for improvement.
+Component: ${stat.paperCode} ${stat.componentName}
+Attempts: ${stat.totalAttempts} total, ${stat.completedAttempts} completed
+Average: ${stat.avgPercentage ?? 'N/A'}%, Best: ${stat.bestPercentage ?? 'N/A'}%, Latest: ${stat.latestPercentage ?? 'N/A'}%
+Trend: ${stat.trend ?? 'unknown'}
+Time efficiency: ${stat.timeEfficiency !== null ? (stat.timeEfficiency <= 1 ? 'within time' : 'over time') : 'unknown'}
+Return ONLY a JSON array of strings, e.g. ["suggestion 1", "suggestion 2"]`;
+      const response = await client.generateText(prompt, { temperature: 0.5, maxTokens: 500 });
+      const parsed = JSON.parse(response);
+      if (Array.isArray(parsed)) {
+        setAiInsights(parsed.slice(0, 4).map(String));
+      }
+    } catch {
+      setAiInsights(['Could not generate insights. Check your AI configuration.']);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [stat, aiLoading]);
+
   if (!stat) return null;
 
   const TrendIcon = stat.trend === 'up' ? TrendingUp : stat.trend === 'down' ? TrendingDown : Minus;
