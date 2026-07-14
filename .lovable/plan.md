@@ -1,104 +1,221 @@
+# Stage 1 Security Audit — Study Buddy Hub
 
-# First-Time Student UX Review
-
-Scope: Reviewed as if I'd just opened the app for the first time. No code changes proposed here — this is a findings report. If you want, approve and I'll turn any subset into a fix plan.
-
----
-
-## 🔴 Critical usability issues (block or confuse a first-time user)
-
-### 1. Onboarding modal explains theory, not the first action
-`OnboardingModal.tsx` teaches the R/A/G system and mentions AI extraction, but the app has moved to a 4-state confidence model (`not_started / in_progress / confident / needs_revision`) used everywhere else (SubjectOverview, SubjectSyllabus, ConfidenceToggle). A new user is trained on a vocabulary that no longer matches the UI they'll see. The "Getting Started" list also says "mark topics R/A/G" — inconsistent.
-
-There is also no guided "do this first" step. The modal closes into a Dashboard that is almost entirely empty until data is imported.
-
-### 2. Empty Dashboard is overwhelming *and* underwhelming at the same time
-With subjects present but no bullets/papers, `Dashboard.tsx` still renders:
-- DeadlinesCard, GlobalReadinessScore, StudyMomentumIndicator, PastPaperPerformanceOverview, YearlyPerformanceCard, NextActionPanel, plus subject cards
-All showing 0 / empty / "No data" states stacked vertically. For a first-time user this reads as "the app is broken" rather than "you haven't added data yet."
-
-The single empty-state CTA ("Go to Syllabus") only appears when `!hasAnyData` **and** `hasSubjects` — but the Tier-1 cards render anyway just below it, drowning it out.
-
-### 3. Two competing "import" entry points, unclear which is canonical
-- Dashboard empty state → "Go to Syllabus" → routes to `/[firstSubject]/syllabus`, which does **not** contain an importer.
-- The importer actually lives on `/[subject]` (SubjectOverview) as the "Import Data for {subject}" card.
-- Settings also has Import (JSON backup), which is a different thing entirely.
-A first-time user clicking "Go to Syllabus" lands on an empty page telling them to "Import syllabus data to get started" — with no button to do so on that page.
-
-### 4. Navigation doesn't scale and hides the primary action
-`Header.tsx` puts Dashboard, Exams, and every subject in one horizontal nav with `overflow-x-auto`. On the current 772px viewport there's no visible affordance for scrolling; subject labels collapse to first word only. New users don't know Subjects are the main workspace — they look like tabs equal to "Exams."
-
-Settings is a gear icon with no label. New users often can't find import/export/backup.
-
-### 5. "Log Paper" flow blocks silently when there are no components
-In `SubjectPapers.tsx`, opening "Log Paper" with no components shows: *"No components found. Import component metadata first via CSV."* — but provides no link, no button, no explanation of what "component metadata" is or where to get the CSV. Dead end.
-
-### 6. Chapter deadline picker is discoverable only if the user opens a chapter
-Deadlines are a headline feature (DeadlinesCard, celebrations, contextual toasts) but the only way to set one is to expand a chapter row on the Syllabus page and find `ChapterDeadlinePicker`. First-time users won't reach it.
+Read-only review. No code was modified. App is a client-only React/Vite PWA with `localStorage` persistence and optional direct-from-browser calls to an OpenAI-compatible AI provider. There is **no backend, no auth, no database** in the repo.
 
 ---
 
-## 🟠 Weak visual hierarchy
+## 1. Client-side API keys & env vars
 
-- **SubjectOverview** stacks: Pace badge → Tabs → Overall Progress card → Import card → Deadlines card → Next Action panel → Weak areas. All cards have similar weight; nothing tells the eye "start here." The Import card should be the hero when data is empty and demoted once populated.
-- **Dashboard** has ~10 card sections with roughly the same visual treatment (Card + CardHeader + Progress). Readiness Score and Next Action get no visual promotion despite being the most important.
-- Status/confidence colors (Red/Amber/Green) compete with the primary brand color used on progress bars and CTAs, so nothing stands out.
-- Breadcrumbs are rendered as a secondary bar under the header, but the page title inside `SubjectPageWrapper` repeats the same info immediately below — redundant.
-
-## 🟠 Unclear calls to action
-
-- Header "Settings" is icon-only.
-- "Generate Study Summary" and "Weekly Reflection" sit as equal outline buttons at the top-right of the Dashboard with no explanation of what they do or why a first-time user should press them.
-- "Plan deadlines" button on the Deadlines card just routes to the syllabus list — the user then has to hunt for the picker.
-- The Import card's file input is the whole CTA; there's no primary "Choose CSV" button and no link to a sample CSV (which exists at `sample/syllabus-sample.csv`).
-- "Test AI Connection" in Settings has no context about what happens if it fails or succeeds.
-
-## 🟠 Missing onboarding guidance
-
-- No inline tour, no tooltips on first visit, no "sample data" option to explore the app before importing.
-- Confidence system is documented behind a collapsible "Show confidence states explanation" — reversed from what a new user needs.
-- No explanation of what a "component" is (paper code, weighting, etc.) before the user is asked to select one.
-- No mention that data is stored locally in the browser and can be lost — important for a study tracker before an exam.
-- Keyboard shortcut `N` opens notes but is never surfaced.
-
-## 🟠 Poor empty states
-
-- `SubjectSyllabus` empty chapter card: "No chapters yet. Import syllabus data to get started." — no button.
-- `SubjectPapers` with no papers: renders filters, tabs, and a "Log Paper" button that leads to the dead end from issue #5.
-- Dashboard Weak Areas / Next Action / Momentum all render "no data" tiles instead of collapsing.
-- ComponentAnalyzer likely shows a similar empty grid (worth spot-checking).
-- Settings integrity check panel shows nothing until pressed — no hint what it does.
-
-## 🟠 Potentially overwhelming pages
-
-- **Dashboard** (most severe): 10+ analytics widgets, several duplicative (SubjectHealth vs SubjectCard vs OverallProgress). First-time user has no way to hide advanced widgets.
-- **SubjectOverview**: hero progress + import + deadlines + tabs + next action + weak areas + confidence explanation, all above the fold on desktop.
-- **SubjectSyllabus**: two progress cards (Chapters + Topics), sync indicator, three filters (search / status / deadline), expand-all/collapse-all, plus deep-link highlight — a lot of chrome before you see a bullet.
-- **Settings**: 887 lines of settings, no section index or search. Data Management, Subject Themes, Reminders, AI, Import/Export, Integrity all coexist.
+**Finding:** AI provider API key is read from `import.meta.env.VITE_AI_API_KEY` and used directly from the browser.
+**Evidence:** `src/ai/aiClient.ts:276, 313`; `src/ai/summarizer.ts:61,126`; `SECURITY_NOTES.md`.
+**Severity:** Low (personal) / **Critical** (multi-user).
+**Status:** Confirmed.
+**Current impact:** User's own key in their own browser — acceptable local-first use. Any `VITE_*` var is bundled into the shipped JS and visible to anyone loading the site.
+**Future impact:** If ever deployed with a shared key baked in, that key is fully exfiltratable → unlimited billed usage by third parties.
+**Action:** Before public deploy, move all AI calls behind a server proxy (Edge Function / Lovable AI Gateway) and delete every `VITE_AI_*` reference. Never put provider secrets in `VITE_` vars.
 
 ---
 
-## 🟢 Optional polish
+## 2. AI provider requests
 
-- Rename "Study Buddy" logo to match app title (`README`, index.html, header) consistently.
-- Give the streak counter a hover tooltip explaining the rules.
-- Add a "?" info popover next to "Readiness" and "Momentum" scores.
-- Show a subtle "scroll for more" fade on the header nav on narrow viewports.
-- On the Import card, show the required CSV columns as a small `<code>` block and add a "Download sample CSV" link (`sample/syllabus-sample.csv` already exists).
-- Consistent icon set for status (some places use emoji like 🎯 ✅ ⚠️ 🚀, others use lucide icons).
-- Fade-in animations are already used; consider staggering Dashboard cards to reduce the "wall of widgets" impression.
-- Breadcrumbs could be hidden on top-level pages to reduce chrome.
-- Add labels to the Settings icon and Theme Toggle on tablet.
+**Finding a — No request signing / origin restriction.** Requests go straight from browser to OpenRouter/OpenAI with the user's key in `Authorization`.
+**Severity:** Medium / High (multi-user).
+**Status:** Confirmed.
+**Impact:** Key travels via user's browser to third party; no server-side auditability.
+**Action:** Proxy through backend; restrict CORS and add per-user rate limits.
+
+**Finding b — Untrusted AI output is parsed and rendered.** Mitigated by `sanitizeAIText`, `containsForbiddenContent`, and Zod validation in `src/ai/guards.ts`, `src/lib/validation.ts` (`validateExtractedSyllabus`).
+**Severity:** Low.
+**Status:** Confirmed mitigated. Keep validators in place if response shape changes.
+
+**Finding c — Prompt injection via user-supplied PDF/CSV/notes.** No guardrails distinguish system prompt from user content.
+**Severity:** Medium (multi-user).
+**Status:** Possible.
+**Impact:** A malicious PDF/CSV could try to alter AI behaviour or exfiltrate other prompt context. Currently low because output is validated to a strict schema before use.
+**Action:** Keep strict output schemas; on multi-user, isolate prompts per user and never concatenate user text into privileged system prompts.
 
 ---
 
-## Suggested priority order if you want to act on this
+## 3. PDF and CSV uploads
 
-1. Rewrite the onboarding modal to match current confidence vocabulary and end with a **single next action** ("Import your first subject's syllabus") that deep-links to the Import card.
-2. Fix the "Go to Syllabus" empty-state CTA to route to the subject's overview (where the importer lives), OR add the importer to the empty Syllabus page.
-3. Progressive dashboard: hide Tier-2 analytics widgets until minimum data thresholds are met; promote NextAction + Readiness.
-4. Fix the "Log Paper" dead end: link directly to the import flow when components are missing, and explain what components are.
-5. Surface deadline setting from the Deadlines card, not only from inside a chapter.
-6. Add a "Load sample data" button in Settings/Onboarding so users can explore before importing.
+**Finding a — PDF parsed client-side via `pdfjs-dist` worker loaded from `unpkg.com` CDN with no SRI.**
+**Evidence:** `src/lib/pdfExtractor.ts` (`workerSrc = https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.js`).
+**Severity:** Medium / High (multi-user).
+**Status:** Confirmed.
+**Impact:** Supply-chain / CDN compromise would execute attacker JS in every user's browser. No integrity hash, no fallback.
+**Action:** Self-host the worker from `/public` (or bundle it) or pin to a versioned URL with `integrity=` SRI hash. Add a strict CSP.
 
-Approve this plan to convert any of the above into a concrete implementation plan, or tell me which items to drop.
+**Finding b — No explicit PDF size/page cap in `extractTextFromPDF`.** Memory (`file.arrayBuffer()`) is bounded only by the browser.
+**Severity:** Low.
+**Status:** Confirmed.
+**Action:** Enforce documented limits (project memory says max 3 PDFs, <10MB) at the upload boundary.
+
+**Finding c — CSV import is size-limited and Zod-validated.** `csvBulletSchema`, `sanitizeCSVCell` strips formula-injection prefixes (`=+-@\t\r`).
+**Severity:** Low (mitigated).
+**Status:** Confirmed mitigated. Good.
+
+---
+
+## 4. Input validation & sanitisation
+
+**Finding:** Broad Zod coverage in `src/lib/validation.ts` (bullets, papers, subjects, settings, full app state, extracted syllabus). `safeJSONParse` strips `__proto__`/`constructor`/`prototype`.
+**Severity:** Low.
+**Status:** Confirmed mitigated.
+**Gap:** Some persisted structures written before validation existed (e.g. `study-tracker-chapter-planning`, `study-tracker-components`, streak/milestone stores) rely on ad-hoc guards, not schema parse on load in every path.
+**Action:** Standardise "schema parse on load" for every localStorage key before multi-user work.
+
+---
+
+## 5. localStorage & browser data
+
+**Finding a — All study data is unencrypted in `localStorage`.**
+**Evidence:** `study-tracker-data`, `study-tracker-components`, `study-tracker-subject-components`, `study-tracker-extraction-changelog`, `study-tracker-chapter-planning`, reminders, streak, milestones, sync queue, theme overrides.
+**Severity:** Low (personal) / High (shared device).
+**Status:** Confirmed.
+**Impact:** Any script on the origin (including a future compromised dependency) can read/exfiltrate all study data. Shared/lost device exposes everything.
+**Action:** Accept for personal use; for multi-user move authoritative data server-side with RLS and treat local copy as cache.
+
+**Finding b — No storage quota / corruption handling beyond try/catch.** A `QuotaExceededError` would silently drop writes in several places.
+**Severity:** Low.
+**Action:** Surface quota errors to the user.
+
+---
+
+## 6. JSON import / export & backup restore
+
+**Finding a — Backup file is plaintext JSON containing full study history.**
+**Evidence:** `src/lib/storage.ts` `exportAsJSON`/`importFromJSON`; `SECURITY_NOTES.md` v3 schema.
+**Severity:** Low (personal) / Medium (multi-user).
+**Status:** Confirmed.
+**Impact:** If shared or synced via cloud, contents are readable. Web Share API path may hand the file to arbitrary third-party apps.
+**Action:** Warn users on export; offer optional passphrase-based encryption.
+
+**Finding b — Import trust boundary.** Import runs Zod validation and dedupe, but any valid-shaped JSON will be written into all listed localStorage keys, overwriting the current session.
+**Severity:** Medium.
+**Status:** Confirmed.
+**Impact:** A malicious backup file could plant crafted long strings, misleading "notes", or attempt oversized payloads. Text is length-capped by schemas — good — but no allow-list on unknown top-level keys everywhere.
+**Action:** On import, refuse unknown fields (`.strict()`), show a diff/confirmation, and require an explicit "Replace all data" confirmation.
+
+---
+
+## 7. Authentication readiness
+
+**Finding:** No authentication exists. No login, no session, no user identity.
+**Severity:** N/A (personal) / **Critical blocker** (multi-user).
+**Status:** Confirmed.
+**Action:** Before any shared deployment, add auth (Lovable Cloud / Supabase). Do not "bolt on" auth after data is public.
+
+---
+
+## 8. Authorization readiness
+
+**Finding:** No authorization layer, no role model, no policy enforcement. All data is trivially readable/writable via devtools.
+**Severity:** N/A / **Critical** (multi-user).
+**Status:** Confirmed.
+**Action:** Design roles + RLS policies before migrating storage. Follow the project's own `user-roles` guidance (separate `user_roles` table + `has_role` security-definer function).
+
+---
+
+## 9. Multi-user data isolation
+
+**Finding:** Data model has no `user_id`/tenant field. Everything is keyed by client-side ids only.
+**Severity:** N/A / **Critical** (multi-user).
+**Status:** Confirmed.
+**Action:** When migrating: add `user_id uuid references auth.users(id)` to every table, enable RLS with `auth.uid() = user_id`, and grant only `authenticated`.
+
+---
+
+## 10. XSS / unsafe rendering
+
+**Finding a — Only `dangerouslySetInnerHTML` usage is in `src/components/ui/chart.tsx:70` for generated CSS variables (shadcn boilerplate).** Input is derived from developer-controlled config, not user text.
+**Severity:** Low.
+**Status:** Confirmed low-risk. Verify no user-supplied strings ever reach that config.
+
+**Finding b — Rendering of user text (notes, comments, AI output) goes through React text nodes** → auto-escaped. No `innerHTML=`, no `eval`, no `new Function` in `src/`.
+**Severity:** Low.
+**Status:** Confirmed.
+
+**Finding c — No Content-Security-Policy meta tag / header.** `index.html` and hosting config not seen to set one; combined with unpkg CDN worker (Finding 3a), XSS blast radius is larger than needed.
+**Severity:** Medium.
+**Action:** Add a strict CSP (default-src 'self'; connect-src for AI provider only; script-src 'self' + pinned CDN hash if kept).
+
+---
+
+## 11. Dependencies & packages
+
+**Finding:** 55 runtime + 18 dev deps (per `package.json`). Includes `pdfjs-dist`, AI SDK, Radix, Zod, etc. `SECURITY_NOTES.md` recommends periodic `npm audit` but no CI evidence in-repo.
+**Severity:** Medium.
+**Status:** Cannot be verified without running `npm audit` / `code--dependency_scan`.
+**Action:** Run `code--dependency_scan` in a follow-up stage; add Dependabot/renovate + `npm audit --audit-level=high` in CI. Pin `pdfjs-dist` and lock its worker version.
+
+---
+
+## 12. Rate limiting & AI cost abuse
+
+**Finding:** No client-side throttling, no per-user quotas, no request counting. `SECURITY_NOTES.md` notes it as a "Low priority" enhancement.
+**Severity:** Low (personal, user's own key) / **Critical** (multi-user or shared key).
+**Status:** Confirmed.
+**Impact:** A stuck retry loop or malicious page interaction could burn through credits.
+**Action:** Add client debounce + a hard daily call cap; enforce real rate limits at the server proxy when introduced.
+
+---
+
+## 13. Error messages / info disclosure
+
+**Finding a — Error strings include env-var names (`VITE_AI_API_KEY`) and internal paths** in toasts/console (`src/ai/summarizer.ts`, `src/lib/pdfExtractor.ts`).
+**Severity:** Low.
+**Status:** Confirmed.
+**Impact:** Personal app — fine. Public app — leaks internal config names to end users.
+**Action:** For multi-user, use generic user-facing messages and log details only to server.
+
+**Finding b — `console.error` used in several storage paths (`src/lib/storage.ts` lines 90, 100, 108).** Could log user data on errors.
+**Severity:** Low.
+**Action:** Gate verbose logs on `import.meta.env.DEV`.
+
+---
+
+## 14. Deployment / Vercel / hosting config
+
+**Finding:** Repo contains no `vercel.json`, no CSP/security headers config, no `robots`/`Referrer-Policy` settings beyond default `public/robots.txt`, no `.env.example` documenting which vars are safe.
+**Severity:** Medium.
+**Status:** Cannot be verified (no deployment config in repo).
+**Impact:** Default hosting = no CSP, no HSTS opinions, permissive referrer.
+**Action:** Add `vercel.json` (or equivalent) with `Content-Security-Policy`, `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`. Document required env vars and mark all `VITE_*` explicitly as public.
+
+---
+
+## 15. Privacy — uploaded documents & study data
+
+**Finding a — PDFs are parsed in-browser only** (no upload to server). Good default.
+**Severity:** Low.
+**Status:** Confirmed.
+
+**Finding b — When AI is enabled, extracted PDF/CSV text is sent to the third-party AI provider** with the user's key. No user consent screen shown before first outbound request beyond the general onboarding modal.
+**Severity:** Medium.
+**Status:** Confirmed.
+**Action:** Explicit "your syllabus text will be sent to <provider>" consent + link to provider's data-retention policy before first AI call.
+
+**Finding c — Backups may include unredacted personal notes and reflections.**
+**Severity:** Low / Medium.
+**Action:** Note this in export UI; consider optional encryption (see Finding 6a).
+
+---
+
+## Prioritised summary
+
+| Priority | Finding | Applies now? |
+|---|---|---|
+| P0 (blocker for multi-user) | 1, 7, 8, 9, 12 | Only when going public |
+| P1 (fix before public deploy) | 3a (unpkg worker + SRI/CSP), 6b (strict import), 10c (CSP), 14 (headers) | Recommended soon |
+| P2 (nice to have now) | 4 (schema-on-load everywhere), 5b (quota UX), 11 (dep scan in CI), 13 (dev-only logs), 15b (consent) | Personal use OK as-is |
+| Already mitigated | 3c (CSV injection), 4 (Zod + prototype-pollution guard), 10a/b (React escaping) | Keep as regressions come |
+
+---
+
+## Suggested next stages (not executed)
+
+- **Stage 2:** Run `code--dependency_scan` and address any High/Critical dep findings.
+- **Stage 3:** Add CSP + security headers + self-hosted pdf worker (small, low-risk change).
+- **Stage 4:** When ready for multi-user, do the auth/RLS/proxy migration as a single coordinated slice — do not partial-migrate.
+
+No files were changed. Approve to move any specific item into an implementation plan.
