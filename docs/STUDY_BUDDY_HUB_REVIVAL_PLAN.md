@@ -1,6 +1,6 @@
 # Study Buddy Hub Revival Plan
 
-**Document status:** Stage 1 consolidated draft  
+**Document status:** Stage 1 technically verified draft — awaiting project-owner approval  
 **Project phase:** SDLC revival — existing application improvement, not a rebuild  
 **Initial release target:** Web application deployed on Vercel  
 **Later phases:** Desktop packaging and Google Play / Apple App Store distribution  
@@ -22,6 +22,24 @@ Study Buddy Hub should not be rebuilt from scratch. It is already a functioning 
 6. prepare the web app for private beta, public beta, and stable public use.
 
 This document records the current state, confirmed strengths, risks, public-release blockers, open questions, and priorities that Stage 2 must convert into final product requirements.
+
+---
+
+
+### 1.1 Technical verification status
+
+A repository-based Devin verification was completed after the initial consolidation. Evidence-backed corrections have been applied to:
+
+- localStorage inventory wording;
+- the exam reminder-settings key;
+- TanStack Query usage wording;
+- PDF prompt truncation wording;
+- test-count clarity;
+- CSS warning details;
+- the external PDF worker source.
+
+The verification report's proposed test-count correction was not applied because it repeated the same counts already present in the plan.
+
 
 ---
 
@@ -93,7 +111,7 @@ The following are outside the current cycle:
 - React Router
 - Tailwind CSS
 - shadcn/ui and Radix UI
-- TanStack Query, currently installed but not actively used for server state
+- TanStack Query; `QueryClientProvider` wraps the application, but no `useQuery` or `useMutation` hooks are currently used for server-state management
 - Recharts
 - Zod
 - pdfjs-dist
@@ -141,7 +159,7 @@ This creates:
 
 ## 4. Current Data-Persistence Map
 
-The Stage 1 audit found approximately 16 localStorage keys or persistent browser-storage areas.
+The Stage 1 audit found at least 15 primary localStorage keys or persistent browser-storage areas, plus additional theme and accessibility-related keys. The exact inventory should be maintained as a living technical reference because some preferences use separate or dynamically managed keys.
 
 | Data area | Current persistence | Public-version direction |
 |---|---|---|
@@ -156,7 +174,7 @@ The Stage 1 audit found approximately 16 localStorage keys or persistent browser
 | Study streak | `study-tracker-streak` | Cloud database or derived activity record |
 | Milestones | `study-tracker-milestones` | Cloud database or derived activity record |
 | Offline sync queue | `study-tracker-sync-queue` | Replace with a functioning synchronization strategy |
-| Scheduled reminders | `study-tracker-reminders` | Cloud-backed settings plus web notification logic |
+| Exam reminder settings | `study-tracker-reminder-settings` | Cloud-backed settings plus web notification logic |
 | Smart progress weightings | `study-tracker-weighting` | Cloud user preference/configuration |
 | Exam schedule | `study-tracker-exam-schedule` | Cloud database if retained |
 | Weekly reflections | `study-tracker-reflections` | Cloud database |
@@ -268,7 +286,7 @@ Major limitations:
 
 - previous OpenRouter key became invalid, preventing full live testing;
 - provider key is exposed in the Vite client bundle;
-- PDF text is truncated to approximately 12,000 characters;
+- the full PDF text may be extracted by `pdfjs-dist`, but only the first 12,000 characters are included in the current AI prompt-generation path;
 - current parsing loses layout, table, and multi-column structure;
 - scanned PDFs are not reliably supported;
 - confidence information is discarded when converted into core syllabus bullets;
@@ -485,7 +503,7 @@ The public version should teach users:
 The audit recorded:
 
 - 8 test files;
-- 94 tests;
+- 94 total tests;
 - 88 passing;
 - 6 failing.
 
@@ -542,7 +560,7 @@ No meaningful automated coverage currently exists for:
 - TypeScript strict mode is disabled;
 - no `typecheck` package script;
 - 19 lint warnings;
-- build succeeds but reports CSS syntax warnings;
+- build succeeds but reports two CSS syntax warnings involving em-dash characters;
 - both npm and Bun lockfiles exist, creating possible package-manager drift.
 
 ---
@@ -599,7 +617,7 @@ When AI is enabled, extracted document text and some study information may be se
 - plaintext backup files;
 - inconsistent upload-size protections;
 - possible browser freezes from large PDFs;
-- PDF worker loaded from an external CDN without integrity protection;
+- PDF worker loaded from `unpkg.com` without Subresource Integrity protection;
 - no confirmed Content Security Policy;
 - no repository-based Vercel security-header configuration;
 - some auxiliary stores have weaker validation;
