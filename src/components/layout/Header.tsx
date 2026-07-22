@@ -1,12 +1,22 @@
 /**
  * Header Component
  * Global navigation with streak counter, breadcrumbs, theme toggle,
- * and per-subject theming support
+ * account menu, and per-subject theming support
  */
 
 import { memo, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, ChevronRight, Settings, Calendar, Calculator, Cpu, Atom } from 'lucide-react';
+import {
+  Atom,
+  BookOpen,
+  Calculator,
+  Calendar,
+  ChevronRight,
+  Cpu,
+  LayoutDashboard,
+  Settings,
+} from 'lucide-react';
+import { UserAccountMenu } from '@/components/auth/UserAccountMenu';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { StreakCounter } from '@/components/ui/StreakCounter';
@@ -33,7 +43,7 @@ const SUBJECT_ICONS: Record<string, React.ElementType> = {
 function getSubjectIcon(subjectId: string, subjectName: string): React.ElementType {
   const id = subjectId.toLowerCase();
   const name = subjectName.toLowerCase();
-  
+
   return SUBJECT_ICONS[id] || SUBJECT_ICONS[name] || BookOpen;
 }
 
@@ -46,9 +56,9 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
   const breadcrumbs = useMemo(() => {
     const path = location.pathname;
     const parts = path.split('/').filter(Boolean);
-    
+
     const crumbs: { label: string; href: string; icon?: React.ElementType }[] = [];
-    
+
     if (parts.length === 0 || path === '/') {
       return [{ label: 'Dashboard', href: '/', icon: LayoutDashboard }];
     }
@@ -83,13 +93,11 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
     return crumbs;
   }, [location.pathname, subjects]);
 
-  const isActive = (href: string) => location.pathname === href;
-
   return (
     <header className={cn(
       'sticky top-0 z-50 backdrop-blur-md border-b transition-colors duration-300',
-      isSubjectPage 
-        ? 'bg-[hsl(var(--subject-bg)/0.85)] border-[hsl(var(--subject-border))]' 
+      isSubjectPage
+        ? 'bg-[hsl(var(--subject-bg)/0.85)] border-[hsl(var(--subject-border))]'
         : 'bg-background/80 border-border',
       className
     )}>
@@ -102,8 +110,8 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
           >
             <div className={cn(
               'p-1.5 rounded-lg transition-colors',
-              isSubjectPage 
-                ? 'bg-[hsl(var(--subject-primary))]' 
+              isSubjectPage
+                ? 'bg-[hsl(var(--subject-primary))]'
                 : 'bg-primary'
             )}>
               <BookOpen className="h-5 w-5 text-primary-foreground" />
@@ -143,7 +151,7 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
               const Icon = getSubjectIcon(subject.id, subject.name);
               const isSubjectActive = location.pathname.startsWith(`/${subject.id}`);
               const isThisSubjectThemed = currentTheme?.id === subject.id;
-              
+
               return (
                 <Button
                   key={subject.id}
@@ -185,6 +193,9 @@ export const Header = memo(function Header({ subjects, streakData, className }: 
 
             {/* Theme Toggle */}
             <ThemeToggle />
+
+            {/* User account and sign-out */}
+            <UserAccountMenu />
           </div>
         </div>
 
