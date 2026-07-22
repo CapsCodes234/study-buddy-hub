@@ -3,41 +3,58 @@
  * Handles all main routes and displays appropriate content
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useAppState } from '@/hooks/useAppState';
-import { useReminders } from '@/hooks/useReminders';
-import { Header } from '@/components/layout/Header';
-import { lazy, Suspense } from 'react';
-import { OnboardingModal } from '@/components/layout/OnboardingModal';
-import { Dashboard } from '@/components/dashboard/Dashboard';
-import { Settings } from '@/components/settings/Settings';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
-// Lazy load heavy components for code splitting
-const SubjectOverview = lazy(() => import('@/pages/subjects/SubjectOverview').then(m => ({ default: m.default })));
-const SubjectSyllabus = lazy(() => import('@/pages/subjects/SubjectSyllabus').then(m => ({ default: m.default })));
-const SubjectPapers = lazy(() => import('@/pages/subjects/SubjectPapers').then(m => ({ default: m.default })));
-const Exams = lazy(() => import('@/pages/Exams'));
+import { Dashboard } from '@/components/dashboard/Dashboard';
+import { Header } from '@/components/layout/Header';
+import { OnboardingModal } from '@/components/layout/OnboardingModal';
 import { MilestoneToast } from '@/components/motivation/MilestoneToast';
 import { WeeklyReflection } from '@/components/reflection/WeeklyReflection';
+import { Settings } from '@/components/settings/Settings';
+import { useAuth } from '@/features/auth/useAuth';
+import { useAppState } from '@/hooks/useAppState';
+import { useReminders } from '@/hooks/useReminders';
+import { loadStreakData, recordActivity } from '@/lib/streak';
 import { NavigationFilters } from '@/types';
 import { StreakData } from '@/types/reminders';
-import { loadStreakData, recordActivity } from '@/lib/streak';
+
+const SubjectOverview = lazy(() =>
+  import('@/pages/subjects/SubjectOverview').then((module) => ({
+    default: module.default,
+  })),
+);
+const SubjectSyllabus = lazy(() =>
+  import('@/pages/subjects/SubjectSyllabus').then((module) => ({
+    default: module.default,
+  })),
+);
+const SubjectPapers = lazy(() =>
+  import('@/pages/subjects/SubjectPapers').then((module) => ({
+    default: module.default,
+  })),
+);
+const Exams = lazy(() => import('@/pages/Exams'));
 
 const Index = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, profileLoading, completeOnboarding } = useAuth();
 
-  const [streakData, setStreakData] = useState<StreakData>(() => loadStreakData());
+  const [streakData, setStreakData] = useState<StreakData>(() =>
+    loadStreakData(),
+  );
   const [reflectionOpen, setReflectionOpen] = useState(false);
-  
-  // Reminders hook for notifications
+  const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+
   const {
     upcomingReminders,
     dismissReminder,
     snoozeReminder,
   } = useReminders();
+
   const {
     state,
     isLoading,
@@ -57,7 +74,6 @@ const Index = () => {
     repairAllDuplicates,
   } = useAppState();
 
-  // Determine current view based on route
   const currentView = useMemo(() => {
     const path = location.pathname;
 
@@ -70,7 +86,8 @@ const Index = () => {
     }
 
     if (subjectId) {
-      const subject = state.subjects.find((s) => s.id === subjectId);
+      const subject = state.subjects.find((item) => item.id === subjectId);
+
       if (!subject) {
         return 'not_found';
       }
@@ -78,24 +95,25 @@ const Index = () => {
       if (path.endsWith('/syllabus')) {
         return 'subject_syllabus';
       }
+
       if (path.endsWith('/papers')) {
         return 'subject_papers';
       }
+
       return 'subject_overview';
     }
 
     return 'dashboard';
   }, [location.pathname, subjectId, state.subjects]);
 
-  // Get current subject if on a subject page
   const currentSubject = useMemo(() => {
     if (subjectId) {
-      return state.subjects.find((s) => s.id === subjectId);
+      return state.subjects.find((subject) => subject.id === subjectId);
     }
+
     return null;
   }, [subjectId, state.subjects]);
 
-  // Handle navigation from dashboard cards
   const handleNavigate = useCallback(
     (filters: NavigationFilters) => {
       if (filters.tab === 'dashboard') {
@@ -107,10 +125,11 @@ const Index = () => {
           const path = filters.highlightId
             ? `/${filters.bulletFilters.subjectId}/syllabus?highlight=${filters.highlightId}`
             : `/${filters.bulletFilters.subjectId}/syllabus`;
+
           navigate(path);
         } else {
-          // Navigate to first subject's syllabus if no subjectId specified
           const firstSubject = state.subjects[0];
+
           if (firstSubject) {
             navigate(`/${firstSubject.id}/syllabus`);
           }
@@ -120,58 +139,76 @@ const Index = () => {
           const path = filters.highlightId
             ? `/${filters.paperFilters.subjectId}/papers?highlight=${filters.highlightId}`
             : `/${filters.paperFilters.subjectId}/papers`;
+
           navigate(path);
         } else {
-          // Navigate to first subject's papers if no subjectId specified
           const firstSubject = state.subjects[0];
+
           if (firstSubject) {
             navigate(`/${firstSubject.id}/papers`);
           }
         }
       }
     },
-    [navigate, state.subjects]
+    [navigate, state.subjects],
   );
 
-  // Track activity for streak
   const handleActivityRecorded = useCallback(() => {
     const newStreakData = recordActivity();
     setStreakData(newStreakData);
   }, []);
 
-  // Wrap update functions to record activity
   const handleUpdateBullet = useCallback(
     (id: string, updates: Partial<typeof state.bullets[0]>) => {
       updateBullet(id, updates);
-      // Record activity when marking something done/confident
+
       if (updates.done || updates.status === 'Green') {
         handleActivityRecorded();
       }
     },
-    [updateBullet, handleActivityRecorded]
+    [handleActivityRecorded, updateBullet],
   );
 
   const handleUpdatePaper = useCallback(
     (id: string, updates: Partial<typeof state.pastPapers[0]>) => {
       updatePastPaper(id, updates);
-      // Record activity when completing a paper
+
       if (updates.completed) {
         handleActivityRecorded();
       }
     },
-    [updatePastPaper, handleActivityRecorded]
+    [handleActivityRecorded, updatePastPaper],
   );
 
-  const handleOnboardingComplete = () => {
-    updateSettings({ hasCompletedOnboarding: true });
-  };
+  const handleOnboardingComplete = useCallback(async () => {
+    if (onboardingSaving) {
+      return;
+    }
 
-  // Redirect invalid subject routes
+    setOnboardingSaving(true);
+    setOnboardingError(null);
+
+    try {
+      await completeOnboarding();
+
+      // Compatibility only: the database profile remains authoritative.
+      updateSettings({ hasCompletedOnboarding: true });
+    } catch (error) {
+      setOnboardingError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to complete onboarding. Please try again.',
+      );
+    } finally {
+      setOnboardingSaving(false);
+    }
+  }, [completeOnboarding, onboardingSaving, updateSettings]);
+
   useEffect(() => {
     if (currentView === 'not_found' && subjectId) {
       navigate('/');
     }
-  }, [currentView, subjectId, navigate]);
+  }, [currentView, navigate, subjectId]);
 
   if (isLoading) {
     return (
@@ -180,6 +217,11 @@ const Index = () => {
       </div>
     );
   }
+
+  const shouldShowOnboarding =
+    !profileLoading &&
+    profile !== null &&
+    profile.onboarding_status !== 'completed';
 
   return (
     <div className="min-h-screen bg-background">
@@ -256,11 +298,12 @@ const Index = () => {
       </main>
 
       <OnboardingModal
-        open={!state.settings.hasCompletedOnboarding}
+        open={shouldShowOnboarding}
         onComplete={handleOnboardingComplete}
+        completing={onboardingSaving}
+        errorMessage={onboardingError}
       />
 
-      {/* Milestone celebration toasts */}
       <MilestoneToast
         subjects={state.subjects}
         bullets={state.bullets}
@@ -268,7 +311,6 @@ const Index = () => {
         streakDays={streakData.currentStreak}
       />
 
-      {/* Weekly reflection modal */}
       <WeeklyReflection
         open={reflectionOpen}
         onOpenChange={setReflectionOpen}

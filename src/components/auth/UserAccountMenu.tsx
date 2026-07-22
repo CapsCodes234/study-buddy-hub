@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Loader2, LogOut, Settings, UserRound } from 'lucide-react';
+import { Loader2, LogOut, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -16,10 +16,7 @@ import {
 import { useAuth } from '@/features/auth/useAuth';
 
 function getInitials(value: string): string {
-  const parts = value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+  const parts = value.trim().split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) {
     return 'SB';
@@ -33,23 +30,30 @@ function getInitials(value: string): string {
 }
 
 export function UserAccountMenu() {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
 
   const account = useMemo(() => {
     const metadataName = user?.user_metadata?.display_name;
-    const displayName =
+    const authDisplayName =
       typeof metadataName === 'string' && metadataName.trim().length > 0
         ? metadataName.trim()
-        : user?.email?.split('@')[0] ?? 'Student';
+        : null;
+
+    const displayName =
+      profile?.display_name?.trim() ||
+      authDisplayName ||
+      profile?.username ||
+      user?.email?.split('@')[0] ||
+      'Student';
 
     return {
       displayName,
       email: user?.email ?? 'Signed-in account',
       initials: getInitials(displayName),
     };
-  }, [user]);
+  }, [profile, user]);
 
   const handleSignOut = async () => {
     if (signingOut) {
