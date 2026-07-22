@@ -140,8 +140,14 @@ max_namespaces = 5
 max_tables = 10
 max_catalogs = 2
 
+[storage.buckets.syllabus-uploads]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["application/pdf"]
+
 # Analytics Buckets is available to Supabase Pro plan.
 # [storage.analytics.buckets.my-warehouse]
+
 
 # Store vector embeddings in S3 for large and durable datasets
 [storage.vector]
