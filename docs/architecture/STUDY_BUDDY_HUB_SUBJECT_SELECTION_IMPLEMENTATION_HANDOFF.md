@@ -1,8 +1,40 @@
 # Study Buddy Hub — Subject Selection Implementation Handoff
 
-**Status:** Approved plan only — implementation has **not** started  
-**Branch:** `feat/supabase-database-foundation`  
+**Status:** Implementation complete with fixes applied  
+**Branch:** `feat/subject-selection-foundation`  
 **Purpose:** Persistent handoff for Cursor/other coding agents to resume the authenticated subject-selection checkpoint safely.
+
+## Implementation Fixes Applied
+
+The following fixes were applied to the initial implementation to address critical issues:
+
+1. **Authenticated Subject Persistence**: Modified `useAppState` to accept explicit `persistSubjects` option instead of inferring from local state. Passes `{ persistSubjects: profile !== null }` in `Index.tsx`.
+
+2. **No-Snapshot Persistence**: Fixed `saveData` in `storage.ts` to preserve empty subjects array when no genuine legacy snapshot exists, avoiding fallback to DEFAULT_SUBJECTS.
+
+3. **Null Filters**: Replaced all `.eq('deleted_at', null)` with `.is('deleted_at', null)` in Supabase queries in `subjectsApi.ts` for correct null filtering.
+
+4. **Legacy Pre-Selection ID Mapping**: Updated `SubjectSelectionGate` to map catalogue rows through `catalogueSlugToUiId` for correct legacy UI ID mapping.
+
+5. **Onboarding Order**: Restored correct gating in `Index.tsx` to show subject selection gate only after onboarding is completed.
+
+6. **Subject Management Integration**: Integrated `SubjectManageSection` into `Settings.tsx` with full add/remove/archive/restore functionality.
+
+7. **Add-Subject UX**: Enhanced `SubjectManageSection` to prevent duplicates, count toward max seven active subjects, and disable already active options.
+
+8. **Syllabus Version Status**: Fixed syllabus version query to use `status = 'active'` instead of `'published'` to match actual schema.
+
+9. **Catalogue Query Errors**: Added distinct error handling in `SubjectSelectionGate` and `useCatalogueSubjects` to show retry UI on failure.
+
+10. **Catalogue Picker Consolidation**: Removed duplicate `CatalogueSubjectPicker.tsx` component; consolidated into `SubjectManageSection`.
+
+11. **Query Cache Lifecycle**: Added user-specific query cache invalidation on logout/user change in `AuthProvider.tsx`.
+
+12. **Legacy Error Fallback**: Fixed `loadData` in `storage.ts` to distinguish between missing subjects key (use DEFAULT_SUBJECTS) and explicitly empty subjects array (preserve []).
+
+13. **Legacy Color Preservation**: Added `LEGACY_COLORS` map in `catalogueUiIds.ts` to preserve original colors for math, physics, it.
+
+14. **Test Coverage**: Updated `storagePersistence.test.ts` with tests covering all three states: no storage, explicit empty array, and non-empty legacy array.
 
 ---
 
@@ -976,7 +1008,7 @@ git status
 Expected branch:
 
 ```text
-feat/supabase-database-foundation
+feat/subject-selection-foundation
 ```
 
 2. Read this entire document before editing.

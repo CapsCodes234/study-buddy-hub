@@ -77,7 +77,7 @@ const Index = () => {
     clearSubjectData,
     checkDataIntegrity,
     repairAllDuplicates,
-  } = useAppState();
+  } = useAppState({ persistSubjects: profile !== null });
 
   // Resolve subjects from server with fallback to local
   const {
@@ -255,8 +255,11 @@ const Index = () => {
     queryClient.invalidateQueries({ queryKey: ['subjects', 'user'] });
   }, [queryClient]);
 
-  // Show subject selection gate if user has zero subjects
-  if (shouldShowSelectionGate) {
+  // Show subject selection gate only if:
+  // - User is authenticated
+  // - Onboarding is completed
+  // - User has zero subjects
+  if (shouldShowSelectionGate && !shouldShowOnboarding) {
     return (
       <div className="min-h-screen bg-background">
         <Header subjects={displayState.subjects} streakData={streakData} />

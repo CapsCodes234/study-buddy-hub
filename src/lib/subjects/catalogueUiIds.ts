@@ -1,6 +1,6 @@
 /**
  * Catalogue UI ID Mapping
- * 
+ *
  * Maps catalogue subjects to stable UI IDs used throughout the application.
  * Legacy mappings preserve existing stable IDs (math, physics, it).
  * Future catalogue subjects use their slug directly as the UI ID.
@@ -17,11 +17,21 @@ const LEGACY_SLUG_OVERRIDES: Record<string, string> = {
 };
 
 /**
+ * Legacy color preservation map
+ * Preserves the original colors for legacy subjects
+ */
+const LEGACY_COLORS: Record<string, string> = {
+  'math': 'hsl(222, 47%, 20%)',
+  'physics': 'hsl(173, 58%, 39%)',
+  'it': 'hsl(38, 92%, 50%)',
+};
+
+/**
  * Convert a catalogue slug to a stable UI ID
- * 
+ *
  * - Legacy subjects use the override map
  * - Future subjects use their slug directly
- * 
+ *
  * @param slug - The catalogue subject slug
  * @returns The stable UI ID for the subject
  */
@@ -32,18 +42,24 @@ export function catalogueSlugToUiId(slug: string): string {
 
 /**
  * Get a deterministic fallback color for a subject based on its UI ID
- * Uses HSL color space with consistent hue based on string hash
- * 
+ * Preserves legacy colors for math, physics, it
+ * Uses HSL color space with consistent hue based on string hash for other subjects
+ *
  * @param uiId - The stable UI ID
  * @returns An HSL color string
  */
 export function getFallbackColor(uiId: string): string {
+  // Preserve legacy colors for backward compatibility
+  if (LEGACY_COLORS[uiId]) {
+    return LEGACY_COLORS[uiId];
+  }
+
+  // Use hash to generate consistent hue (0-360) for new subjects
   let hash = 0;
   for (let i = 0; i < uiId.length; i++) {
     hash = uiId.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
-  // Use hash to generate consistent hue (0-360)
+
   const hue = Math.abs(hash % 360);
   // Use moderate saturation and lightness for readability
   return `hsl(${hue}, 60%, 40%)`;

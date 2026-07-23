@@ -64,21 +64,26 @@ export const loadData = (): AppState => {
         console.error('Failed to parse stored data safely');
         return getInitialState();
       }
-      
+
       // Validate against schema
       const validation = appStateSchema.safeParse(parsed);
       if (validation.success) {
+        // Preserve subjects array if it exists in stored data (even if empty)
+        // Only use DEFAULT_SUBJECTS if subjects key is missing entirely
+        const hasSubjectsKey = 'subjects' in parsed;
+        const subjects = hasSubjectsKey ? validation.data.subjects as Subject[] : DEFAULT_SUBJECTS;
         return {
-          subjects: validation.data.subjects.length > 0 ? validation.data.subjects as Subject[] : DEFAULT_SUBJECTS,
+          subjects,
           bullets: validation.data.bullets as Bullet[],
           pastPapers: validation.data.pastPapers as PastPaper[],
           settings: { ...DEFAULT_SETTINGS, ...validation.data.settings },
         };
       }
-      
+
       // Fallback: partial recovery for legacy data
+      const hasSubjectsKey = 'subjects' in parsed;
       const parsedSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : undefined;
-      const subjects = parsedSubjects && parsedSubjects.length > 0 ? parsedSubjects as Subject[] : DEFAULT_SUBJECTS;
+      const subjects = hasSubjectsKey && parsedSubjects ? parsedSubjects as Subject[] : DEFAULT_SUBJECTS;
       return {
         subjects,
         bullets: Array.isArray(parsed.bullets) ? parsed.bullets as Bullet[] : [],
@@ -113,11 +118,11 @@ export const saveData = (
           if (parsed && typeof parsed === 'object') {
             // 2. Preserve the genuine legacy subjects array
             const legacySubjects = Array.isArray(parsed.subjects) ? parsed.subjects as Subject[] : [];
-            
-            // 3. Persist the newest bullets, past papers, and settings
+
+            // 3. Persist the newest bullets, past papers, and settings with preserved subjects
             const toSave = {
               ...state,
-              subjects: legacySubjects.length > 0 ? legacySubjects : [], // Preserve [] if no genuine legacy subjects
+              subjects: legacySubjects,
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
             return;
@@ -126,9 +131,14 @@ export const saveData = (
           console.warn('Failed to preserve legacy subjects during save:', e);
         }
       }
-      
-      // Fallback: save current state if we couldn't preserve legacy
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+      // No genuine legacy snapshot exists (missing, malformed, or empty)
+      // Preserve empty subjects array while saving other state
+      const toSave = {
+        ...state,
+        subjects: [],
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     }
   } catch (error) {
     console.error('Error saving data to localStorage:', error);

@@ -6,10 +6,11 @@
  * Pre-checks subjects that have local study data.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useCatalogueSubjects } from '@/features/subjects/useCatalogueSubjects';
 import { useSubjectMutations } from '@/features/subjects/useSubjectMutations';
 import { getPreSelectedSubjectIds } from '@/lib/subjects/legacySubjectUsage';
+import { catalogueSlugToUiId } from '@/lib/subjects/catalogueUiIds';
 import type { Bullet, PastPaper } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,15 +33,31 @@ export function SubjectSelectionGate({
   pastPapers,
   onComplete,
 }: SubjectSelectionGateProps) {
-  const { data: catalogueSubjects, isLoading: isLoadingCatalogue } = useCatalogueSubjects();
+  const { data: catalogueSubjects, isLoading: isLoadingCatalogue, isError: isCatalogueError, error: catalogueError } = useCatalogueSubjects();
   const { addCatalogueSubject, addCustomSubject } = useSubjectMutations();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCatalogueIds, setSelectedCatalogueIds] = useState<Set<string>>(
-    new Set(getPreSelectedSubjectIds(bullets, pastPapers))
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
+
+  // Get pre-selected local UI IDs (e.g., "math", "physics", "it")
+  const preSelectedLocalIds = useMemo(() => {
+    return new Set(getPreSelectedSubjectIds(bullets, pastPapers));
+  }, [bullets, pastPapers]);
+
+  // Map catalogue subjects to their UI IDs and preselect matching ones
+  const [selectedCatalogueIds, setSelectedCatalogueIds] = useState<Set<string>>(() => {
+    const selected = new Set<string>();
+    if (catalogueSubjects) {
+      catalogueSubjects.forEach(subject => {
+        const uiId = catalogueSlugToUiId(subject.slug);
+        if (preSelectedLocalIds.has(uiId)) {
+          selected.add(subject.id);
+        }
+      });
+    }
+    return selected;
+  });
 
   // Filter catalogue subjects by search
   const filteredCatalogueSubjects = catalogueSubjects?.filter(subject =>
@@ -72,15 +89,15 @@ export function SubjectSelectionGate({
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // Add each selected catalogue subject
       const promises = Array.from(selectedCatalogueIds).map(id =>
         addCatalogueSubject.mutateAsync(id)
       );
-      
+
       await Promise.all(promises);
-      
+
       toast.success('Subjects added successfully');
       onComplete();
     } catch (error) {
@@ -98,7 +115,7 @@ export function SubjectSelectionGate({
     description?: string;
   }) => {
     setIsSubmitting(true);
-    
+
     try {
       await addCustomSubject.mutateAsync(params);
       toast.success('Custom subject added successfully');
@@ -112,10 +129,35 @@ export function SubjectSelectionGate({
     }
   };
 
+  const handleRetryCatalogue = () => {
+    window.location.reload();
+  };
+
   if (isLoadingCatalogue) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isCatalogueError) {
+    return (
+      <div className="container max-w-4xl mx-auto py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-destructive">Unable to Load Subjects</CardTitle>
+            <CardDescription>
+              We couldn't load the subject catalogue. Please check your internet connection and try again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleRetryCatalogue} variant="outline">
+              <Loader2 className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

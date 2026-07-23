@@ -23,6 +23,7 @@ import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
 import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
 import { SubjectThemeSettings } from './SubjectThemeSettings';
 import { ClearSubjectDataModal, type ClearOption } from './ClearSubjectDataModal';
+import { SubjectManageSection } from '@/components/subjects/SubjectManageSection';
 import { type IntegrityCheckResult } from '@/lib/dataIntegrity';
 import {
   Settings as SettingsIcon,
@@ -658,6 +659,15 @@ export const Settings = ({
               Clear Data
             </Button>
           </div>
+
+          <Separator />
+
+          {/* Subject Management */}
+          <SubjectManageSection
+            bullets={state.bullets}
+            pastPapers={state.pastPapers}
+            onSubjectsChange={() => {}}
+          />
 
           <Separator />
 

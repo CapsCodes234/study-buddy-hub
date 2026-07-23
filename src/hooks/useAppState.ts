@@ -14,9 +14,14 @@ import {
 
 export type ClearOption = 'syllabus' | 'papers' | 'both';
 
-export const useAppState = () => {
+interface UseAppStateOptions {
+  persistSubjects?: boolean;
+}
+
+export const useAppState = (options?: UseAppStateOptions) => {
   const [state, setState] = useState<AppState>(() => loadData());
   const [isLoading, setIsLoading] = useState(true);
+  const { persistSubjects } = options || {};
 
   // Load data on mount and run integrity scan (once)
   useEffect(() => {
@@ -50,14 +55,14 @@ export const useAppState = () => {
   }, []);
 
   // Save data whenever state changes
-  // For authenticated users with server-backed subjects, preserve legacy subjects
+  // Use explicit persistSubjects option to control subject persistence
   useEffect(() => {
     if (!isLoading) {
-      // Check if we have server-backed subjects (has userSubjectId)
-      const hasServerSubjects = state.subjects.some(s => s.userSubjectId);
-      saveData(state, { persistSubjects: !hasServerSubjects });
+      // If persistSubjects is explicitly false, preserve legacy subjects
+      // Otherwise, use default behavior (persist all subjects)
+      saveData(state, { persistSubjects: persistSubjects === false ? false : true });
     }
-  }, [state, isLoading]);
+  }, [state, isLoading, persistSubjects]);
 
   // Bullet operations
   const addBullet = useCallback((bullet: Omit<Bullet, 'id' | 'createdAt' | 'updatedAt'>) => {

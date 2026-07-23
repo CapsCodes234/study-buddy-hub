@@ -52,7 +52,7 @@ export async function fetchUserSubjects(
     `)
     .eq('user_id', userId)
     .eq('is_archived', false)
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .order('sort_order');
 
   if (error) {
@@ -84,7 +84,7 @@ export async function fetchArchivedUserSubjects(
     `)
     .eq('user_id', userId)
     .eq('is_archived', true)
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .order('sort_order');
 
   if (error) {
@@ -119,7 +119,7 @@ export async function findArchivedUserSubjectByCatalogueId(
     .eq('user_id', userId)
     .eq('catalogue_subject_id', catalogueSubjectId)
     .eq('is_archived', true)
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) {
@@ -162,7 +162,7 @@ export async function findArchivedUserSubjectByCustomId(
     .eq('user_id', userId)
     .eq('custom_subject_id', customSubjectId)
     .eq('is_archived', true)
-    .eq('deleted_at', null)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) {
@@ -221,7 +221,7 @@ export async function fetchActiveSyllabusVersion(
     .from('syllabus_versions')
     .select('*')
     .eq('syllabus_id', syllabusData.id)
-    .eq('status', 'published')
+    .eq('status', 'active')
     .order('valid_from_year', { ascending: false })
     .limit(1)
     .maybeSingle();
