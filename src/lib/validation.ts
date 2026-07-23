@@ -73,6 +73,16 @@ export const subjectSchema = z.object({
   name: z.string().min(1).max(MAX_SUBJECT_NAME_LENGTH),
   color: z.string(),
   weight: z.number().optional(),
+  // Extended fields for Supabase-backed subject selection
+  userSubjectId: z.string().optional(),
+  catalogueSubjectId: z.string().optional(),
+  customSubjectId: z.string().optional(),
+  syllabusVersionId: z.string().nullable().optional(),
+  catalogueCode: z.string().nullable().optional(),
+  catalogueSlug: z.string().nullable().optional(),
+  source: z.enum(['catalogue', 'custom', 'local']).optional(),
+  sortOrder: z.number().optional(),
+  version: z.number().optional(),
 });
 
 // Past paper schema

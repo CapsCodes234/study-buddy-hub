@@ -93,9 +93,43 @@ export const loadData = (): AppState => {
 };
 
 // Save data to localStorage
-export const saveData = (state: AppState): void => {
+export const saveData = (
+  state: AppState,
+  options?: { persistSubjects?: boolean }
+): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const persistSubjects = options?.persistSubjects !== false; // Default to true for backward compatibility
+    
+    if (persistSubjects) {
+      // Legacy behavior: save everything including subjects
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } else {
+      // For authenticated/server-backed sessions:
+      // 1. Read existing persisted state
+      const existing = localStorage.getItem(STORAGE_KEY);
+      if (existing) {
+        try {
+          const parsed = safeJSONParse<Record<string, unknown>>(existing);
+          if (parsed && typeof parsed === 'object') {
+            // 2. Preserve the genuine legacy subjects array
+            const legacySubjects = Array.isArray(parsed.subjects) ? parsed.subjects as Subject[] : [];
+            
+            // 3. Persist the newest bullets, past papers, and settings
+            const toSave = {
+              ...state,
+              subjects: legacySubjects.length > 0 ? legacySubjects : [], // Preserve [] if no genuine legacy subjects
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+            return;
+          }
+        } catch (e) {
+          console.warn('Failed to preserve legacy subjects during save:', e);
+        }
+      }
+      
+      // Fallback: save current state if we couldn't preserve legacy
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
   } catch (error) {
     console.error('Error saving data to localStorage:', error);
   }

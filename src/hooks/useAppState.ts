@@ -50,9 +50,12 @@ export const useAppState = () => {
   }, []);
 
   // Save data whenever state changes
+  // For authenticated users with server-backed subjects, preserve legacy subjects
   useEffect(() => {
     if (!isLoading) {
-      saveData(state);
+      // Check if we have server-backed subjects (has userSubjectId)
+      const hasServerSubjects = state.subjects.some(s => s.userSubjectId);
+      saveData(state, { persistSubjects: !hasServerSubjects });
     }
   }, [state, isLoading]);
 

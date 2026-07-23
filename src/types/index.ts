@@ -7,6 +7,16 @@ export interface Subject {
   name: string;
   weight?: number; // Optional weight for weighted progress calculation
   color: string; // Accent color for the subject
+  // Extended fields for Supabase-backed subject selection
+  userSubjectId?: string;
+  catalogueSubjectId?: string;
+  customSubjectId?: string;
+  syllabusVersionId?: string | null;
+  catalogueCode?: string | null;
+  catalogueSlug?: string | null;
+  source?: 'catalogue' | 'custom' | 'local';
+  sortOrder?: number;
+  version?: number;
 }
 
 export interface Bullet {
