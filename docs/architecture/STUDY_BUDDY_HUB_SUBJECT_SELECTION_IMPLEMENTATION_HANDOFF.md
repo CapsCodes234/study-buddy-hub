@@ -2,8 +2,8 @@
 
 **Status:** Implementation and local acceptance complete; hosted preview/production validation pending
 
-**Branch:** `fix/current-repo-stabilization`
-**Purpose:** Persistent handoff for Cursor/other coding agents to resume the authenticated subject-selection checkpoint safely.
+**Branch:** `feat/subject-selection-foundation`
+**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint and its remaining hosted-validation/def
 
 ## Implementation Fixes Applied
 
