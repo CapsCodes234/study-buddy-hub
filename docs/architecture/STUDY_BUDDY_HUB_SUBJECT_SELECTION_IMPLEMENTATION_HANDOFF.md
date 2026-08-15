@@ -68,7 +68,12 @@ The following fixes were applied to the initial implementation to address critic
 | Cross-device confirmation UX | Non-blocking follow-up |
 | React Router | Upgraded from 6.30.4 to 7.18.2 |
 | React Router security blocker | RESOLVED |
-| `npm audit` current | 0 vulnerabilities |
+| Full `npm audit` | 3 vulnerabilities — 1 moderate, 2 high; all development-only |
+| Production audit (`npm audit --omit=dev`) | 0 vulnerabilities |
+| Lockfile audit (`npm audit --package-lock-only`) | 3 vulnerabilities — 1 moderate, 2 high; all development-only |
+| Production dependency tree | No vulnerable package present |
+| Remaining dependency maintenance | Vite >=6.4.3 and sharp >=0.35.0; deferred, non-blocking checkpoint |
+| Main integration security impact | NON-BLOCKING |
 | Subject-selection checkpoint clearance | **MERGE CLEARED** |
 | Integration status | **MERGED INTO `feat/supabase-database-foundation`** |
 
@@ -105,7 +110,7 @@ The following foundation is already complete and tested:
 - Hosted development Supabase migrations are 17/17 aligned, the development catalogue seed is deployed and validated, and two-user hosted RLS isolation passed.
 - Vercel Preview and its SPA deep-link fallback are validated against hosted development Supabase.
 - Both hosted QA users and all associated application/Storage data were removed after validation with zero residue.
-- React Router 7.18.2 is integrated, the identified React Router security blocker is resolved, and current npm audits report zero vulnerabilities.
+- React Router 7.18.2 is integrated and the identified React Router security blocker is resolved. The full and lockfile audits report three development-only findings (Vite 5.4.21, Vite's esbuild 0.21.5, and sharp 0.34.5), while the production-only audit reports zero vulnerabilities and the deployed production dependency tree contains none of the affected packages. Vite >=6.4.3 and sharp >=0.35.0 remediation is deferred to a non-blocking dependency-maintenance checkpoint.
 
 Do not redo completed foundation work unless inspection demonstrates a defect.
 

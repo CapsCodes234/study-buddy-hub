@@ -26,7 +26,9 @@ The database-foundation implementation described by this handoff has been execut
 - Vercel Preview uses the hosted development Supabase project, and the SPA deep-link fallback is validated.
 - GitHub CI exists and passes the repository validation suite.
 - React Router was upgraded from 6.30.4 to 7.18.2; the identified security blocker is resolved.
-- Current full, production-only, and lockfile npm audits report zero vulnerabilities.
+- The current full and lockfile npm audits report three vulnerabilities (one moderate and two high), all confined to development-only Vite 5.4.21, Vite's esbuild 0.21.5, and sharp 0.34.5 dependency nodes.
+- The production-only audit (`npm audit --omit=dev`) reports zero vulnerabilities, and no vulnerable package is present in the deployed production dependency tree.
+- The remaining Vite >=6.4.3 and sharp >=0.35.0 remediation is deferred to a non-blocking dependency-maintenance checkpoint; these development-only findings do not block main integration.
 
 This integration branch is **not equivalent to production readiness**. The database schema provides foundations for later domains, but application migration remains incomplete for syllabus content, progress/confidence, notes, papers, planning, notifications, documents/AI workflows, and portions of settings. Full catalogue population/import tooling, durable offline queueing, and conflict handling also remain future work.
 

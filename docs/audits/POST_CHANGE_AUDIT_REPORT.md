@@ -1,7 +1,7 @@
 # Post-Change Audit Report
 ## Study Buddy Hub - Production Readiness Audit
 
-> **Historical and superseded:** This report records an earlier application state and is retained for provenance only. Its dependency findings, test counts, and readiness conclusions are not current. The authoritative pre-main handoffs record React Router 7.18.2, 156 passing tests, and current npm audits with zero vulnerabilities.
+> **Historical and superseded:** This report records an earlier application state and is retained for provenance only. Its dependency findings, test counts, and readiness conclusions are not current. The authoritative pre-main handoffs record React Router 7.18.2 with its security remediation passed, 156 passing tests, a clean production dependency audit, and three current development-only audit findings (one moderate and two high). No vulnerable package is present in the deployed production dependency tree, so the findings are non-blocking for main integration. Vite >=6.4.3 and sharp >=0.35.0 remediation is deferred to a dependency-maintenance checkpoint; this does not imply production readiness.
 
 **Date:** 2024-01-XX  
 **Auditor:** Senior QA, Security, and Performance Engineer  
