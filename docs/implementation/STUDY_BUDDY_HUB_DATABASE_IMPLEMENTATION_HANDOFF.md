@@ -1,10 +1,36 @@
 # Study Buddy Hub — Database Implementation Handoff
 
-**Status:** Ready for agent execution after owner setup  
-**Purpose:** Convert the reviewed Stage 3 database architecture into locally validated Supabase migrations and tests  
-**Target agent:** Devin, Cursor Agent, or another repository-connected coding agent  
-**Canonical package manager:** npm  
-**Important:** Do not push to a remote Supabase project until all local gates pass
+**Status:** Database foundation implemented, hosted-development validated, and integrated
+
+**Purpose:** Record the authoritative current database-foundation status while preserving the original implementation plan and acceptance guidance
+
+**Original target agent:** Devin, Cursor Agent, or another repository-connected coding agent
+
+**Canonical package manager:** npm
+
+**Current integration branch:** `feat/supabase-database-foundation`
+
+**Current integration evidence:** HEAD includes `181808d` (React Router security-remediation merge)
+
+---
+
+## 0. Authoritative Current Status
+
+The database-foundation implementation described by this handoff has been executed. The following are completed checkpoint facts:
+
+- 17 ordered Supabase migrations exist and are 17/17 aligned with the hosted development Supabase project.
+- The deterministic development catalogue seed has been deployed and validated in hosted development.
+- Supabase Auth, profile creation/loading, and onboarding persistence are implemented and hosted-validated.
+- Catalogue subject selection and separate custom-subject creation are Supabase-backed.
+- RLS ownership boundaries and hosted two-user isolation were validated; the temporary QA users and their owned application/Storage data were subsequently removed with zero residue.
+- Vercel Preview uses the hosted development Supabase project, and the SPA deep-link fallback is validated.
+- GitHub CI exists and passes the repository validation suite.
+- React Router was upgraded from 6.30.4 to 7.18.2; the identified security blocker is resolved.
+- Current full, production-only, and lockfile npm audits report zero vulnerabilities.
+
+This integration branch is **not equivalent to production readiness**. The database schema provides foundations for later domains, but application migration remains incomplete for syllabus content, progress/confidence, notes, papers, planning, notifications, documents/AI workflows, and portions of settings. Full catalogue population/import tooling, durable offline queueing, and conflict handling also remain future work.
+
+> **Historical implementation guidance:** Sections 1–17 below preserve the reviewed instructions, gates, and acceptance criteria used to build the database foundation. Imperative wording such as “create a Supabase project,” “push migrations,” or “connect the frontend” records the original implementation sequence; it is not a list of currently pending foundation tasks. Any future remote or production operation still requires its own explicit authorization and current-state verification.
 
 ---
 

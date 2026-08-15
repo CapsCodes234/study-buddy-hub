@@ -1,9 +1,14 @@
 # Study Buddy Hub — Subject Selection Implementation Handoff
 
-**Status:** Implementation, local acceptance, and hosted development validation complete; **MERGE CLEARED**
+**Status:** Implementation, local acceptance, hosted development validation, and integration complete; **MERGED INTO `feat/supabase-database-foundation`**
 
-**Branch:** `feat/subject-selection-foundation`
-**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint, final hosted-development validation, merge clearance, and deferred follow-up work.
+**Implementation branch:** `feat/subject-selection-foundation`
+
+**Current integration branch:** `feat/supabase-database-foundation`
+
+**Integration evidence:** subject-selection merge `2921783`; React Router security-remediation merge `181808d`
+
+**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint, final hosted-development validation, integration status, security remediation, and deferred follow-up work.
 
 ## Implementation Fixes Applied
 
@@ -45,7 +50,7 @@ The following fixes were applied to the initial implementation to address critic
 
 18. **Optional syllabus version**: A successful lookup with no active syllabus/version returns `null`; query failures throw. Catalogue selection remains allowed without a version where the existing RPC permits it.
 
-19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted development validation is complete as recorded below. Production deployment, GitHub Actions hosted execution, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
+19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted development validation is complete as recorded below, and GitHub CI exists and passes the repository validation suite. Production deployment, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
 
 ## Final Hosted Validation and Merge Clearance
 
@@ -58,12 +63,18 @@ The following fixes were applied to the initial implementation to address critic
 | QA User A | PASS |
 | QA User B | PASS |
 | Cross-user isolation | PASS |
+| QA user/data cleanup | PASS — both QA users removed with zero owned-data or Storage residue |
 | Email confirmation | PASS |
 | Cross-device confirmation UX | Non-blocking follow-up |
+| React Router | Upgraded from 6.30.4 to 7.18.2 |
+| React Router security blocker | RESOLVED |
 | `npm audit` current | 0 vulnerabilities |
-| Final merge clearance | **MERGE CLEARED** |
+| Subject-selection checkpoint clearance | **MERGE CLEARED** |
+| Integration status | **MERGED INTO `feat/supabase-database-foundation`** |
 
-The cross-device confirmation behavior does not block the merge and remains a follow-up UX improvement.
+The cross-device confirmation behavior does not block integration and remains a follow-up UX improvement. The hosted development catalogue contains the validated development baseline only; full catalogue population and controlled catalogue-import tooling remain future work.
+
+This completed checkpoint does not make all application data Supabase-backed. Syllabus content, progress/confidence, notes, papers, planning, notifications, documents/AI workflows, and portions of settings remain local-only or partially migrated and are deferred to later migration phases.
 
 ---
 
@@ -91,6 +102,10 @@ The following foundation is already complete and tested:
 - TypeScript and production build validation passed for the completed checkpoints.
 - Authenticated `user_subjects` authority with a zero-subject selection gate, catalogue and custom-subject workflows, archive/restore, the seven-active-subject limit, deterministic ordering, asynchronous legacy preselection, and account-specific query-cache cleanup.
 - Local legacy subject snapshots and remaining local study data are preserved, while backup/export uses the current resolved server-backed subject selection.
+- Hosted development Supabase migrations are 17/17 aligned, the development catalogue seed is deployed and validated, and two-user hosted RLS isolation passed.
+- Vercel Preview and its SPA deep-link fallback are validated against hosted development Supabase.
+- Both hosted QA users and all associated application/Storage data were removed after validation with zero residue.
+- React Router 7.18.2 is integrated, the identified React Router security blocker is resolved, and current npm audits report zero vulnerabilities.
 
 Do not redo completed foundation work unless inspection demonstrates a defect.
 
@@ -1089,4 +1104,4 @@ feat/subject-selection-foundation
 
 ## Implementation Authorization
 
-This document records the approved architecture for the subject-selection checkpoint. Implementation, local acceptance, and hosted development validation are complete, and the checkpoint is **MERGE CLEARED**. Only the explicitly deferred production/future work and the non-blocking cross-device confirmation UX follow-up remain.
+This document records the approved architecture for the subject-selection checkpoint. Implementation, local acceptance, hosted development validation, QA cleanup, and React Router security remediation are complete. The checkpoint was **MERGE CLEARED** and is now merged into `feat/supabase-database-foundation`. Only the explicitly deferred production/future work and the non-blocking cross-device confirmation UX follow-up remain.

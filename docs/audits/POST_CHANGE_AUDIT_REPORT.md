@@ -1,6 +1,8 @@
 # Post-Change Audit Report
 ## Study Buddy Hub - Production Readiness Audit
 
+> **Historical and superseded:** This report records an earlier application state and is retained for provenance only. Its dependency findings, test counts, and readiness conclusions are not current. The authoritative pre-main handoffs record React Router 7.18.2, 156 passing tests, and current npm audits with zero vulnerabilities.
+
 **Date:** 2024-01-XX  
 **Auditor:** Senior QA, Security, and Performance Engineer  
 **Scope:** Complete post-change audit after recent feature additions
