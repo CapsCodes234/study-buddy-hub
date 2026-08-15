@@ -1,43 +1,66 @@
 /**
- * Updated App with Subject Routing and Per-Subject Theming
+ * App routing with authenticated and guest-only route boundaries.
  */
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
+
+import { GuestOnlyRoute } from "@/components/auth/GuestOnlyRoute";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SubjectThemeProvider } from "@/components/providers/SubjectThemeProvider";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import ThemeDemo from "./pages/ThemeDemo";
+import { ThemeProvider } from "@/components/ui/ThemeProvider";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/features/auth/AuthProvider";
+import AuthPage from "@/pages/Auth";
+import Index from "@/pages/Index";
+import NotFound from "@/pages/NotFound";
+import ThemeDemo from "@/pages/ThemeDemo";
 
 const queryClient = new QueryClient();
 
-// Wrapper component to provide subject theming within router context
-function SubjectThemedRoutes() {
+function ProtectedSubjectRoutes() {
   return (
     <SubjectThemeProvider>
-      <Routes>
-        {/* Main Routes */}
-        <Route path="/" element={<Index />} />
-        <Route path="/settings" element={<Index />} />
-        <Route path="/exams" element={<Index />} />
-        
-        {/* Subject Routes - SubjectThemeProvider reads :subjectId */}
-        <Route path="/:subjectId" element={<Index />} />
-        <Route path="/:subjectId/syllabus" element={<Index />} />
-        <Route path="/:subjectId/papers" element={<Index />} />
-        
-        {/* Utility Routes */}
-        <Route path="/theme-demo" element={<ThemeDemo />} />
-        
-        {/* Catch-all */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Outlet />
     </SubjectThemeProvider>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<GuestOnlyRoute />}>
+        <Route path="/login" element={<AuthPage mode="login" />} />
+        <Route path="/signup" element={<AuthPage mode="signup" />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedSubjectRoutes />}>
+          <Route path="/" element={<Index />} />
+          <Route path="/settings" element={<Index />} />
+          <Route path="/exams" element={<Index />} />
+
+          <Route path="/:subjectId" element={<Index />} />
+          <Route path="/:subjectId/syllabus" element={<Index />} />
+          <Route path="/:subjectId/papers" element={<Index />} />
+
+          <Route path="/theme-demo" element={<ThemeDemo />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Route>
+
+      <Route path="/auth" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 }
 
@@ -45,7 +68,7 @@ function ScrollToTop() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [pathname]);
 
   return null;
@@ -54,14 +77,16 @@ function ScrollToTop() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider defaultTheme="system">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <SubjectThemedRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ScrollToTop />
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

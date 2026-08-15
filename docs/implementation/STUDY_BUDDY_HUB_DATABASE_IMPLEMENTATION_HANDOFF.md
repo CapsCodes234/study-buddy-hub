@@ -1,10 +1,38 @@
 # Study Buddy Hub — Database Implementation Handoff
 
-**Status:** Ready for agent execution after owner setup  
-**Purpose:** Convert the reviewed Stage 3 database architecture into locally validated Supabase migrations and tests  
-**Target agent:** Devin, Cursor Agent, or another repository-connected coding agent  
-**Canonical package manager:** npm  
-**Important:** Do not push to a remote Supabase project until all local gates pass
+**Status:** Database foundation implemented, hosted-development validated, and integrated
+
+**Purpose:** Record the authoritative current database-foundation status while preserving the original implementation plan and acceptance guidance
+
+**Original target agent:** Devin, Cursor Agent, or another repository-connected coding agent
+
+**Canonical package manager:** npm
+
+**Current integration branch:** `feat/supabase-database-foundation`
+
+**Current integration evidence:** HEAD includes `181808d` (React Router security-remediation merge)
+
+---
+
+## 0. Authoritative Current Status
+
+The database-foundation implementation described by this handoff has been executed. The following are completed checkpoint facts:
+
+- 17 ordered Supabase migrations exist and are 17/17 aligned with the hosted development Supabase project.
+- The deterministic development catalogue seed has been deployed and validated in hosted development.
+- Supabase Auth, profile creation/loading, and onboarding persistence are implemented and hosted-validated.
+- Catalogue subject selection and separate custom-subject creation are Supabase-backed.
+- RLS ownership boundaries and hosted two-user isolation were validated; the temporary QA users and their owned application/Storage data were subsequently removed with zero residue.
+- Vercel Preview uses the hosted development Supabase project, and the SPA deep-link fallback is validated.
+- GitHub CI exists and passes the repository validation suite.
+- React Router was upgraded from 6.30.4 to 7.18.2; the identified security blocker is resolved.
+- The current full and lockfile npm audits report three vulnerabilities (one moderate and two high), all confined to development-only Vite 5.4.21, Vite's esbuild 0.21.5, and sharp 0.34.5 dependency nodes.
+- The production-only audit (`npm audit --omit=dev`) reports zero vulnerabilities, and no vulnerable package is present in the deployed production dependency tree.
+- The remaining Vite >=6.4.3 and sharp >=0.35.0 remediation is deferred to a non-blocking dependency-maintenance checkpoint; these development-only findings do not block main integration.
+
+This integration branch is **not equivalent to production readiness**. The database schema provides foundations for later domains, but application migration remains incomplete for syllabus content, progress/confidence, notes, papers, planning, notifications, documents/AI workflows, and portions of settings. Full catalogue population/import tooling, durable offline queueing, and conflict handling also remain future work.
+
+> **Historical implementation guidance:** Sections 1–17 below preserve the reviewed instructions, gates, and acceptance criteria used to build the database foundation. Imperative wording such as “create a Supabase project,” “push migrations,” or “connect the frontend” records the original implementation sequence; it is not a list of currently pending foundation tasks. Any future remote or production operation still requires its own explicit authorization and current-state verification.
 
 ---
 
@@ -345,18 +373,16 @@ GitHub Actions should run database tests on pull requests before migrations are 
 
 ---
 
-## 14. Lovable Integration
+## 14. Frontend Integration
 
-Lovable should not be the first environment used to validate the database SQL.
-
-Connect Lovable only after:
+The React/Vite application and Vercel preview workflow should be connected only after:
 
 - the remote development project has the validated migrations;
 - Auth and RLS have been tested;
 - local application queries work;
 - development environment variables are ready.
 
-Lovable must connect to the development project, not a future production project.
+Preview deployments must use the development project, not a future production project.
 
 ---
 
@@ -394,7 +420,7 @@ Recommended cards:
 18. Dry-run remote migration push
 19. Push to remote development project
 20. Connect frontend to development Supabase
-21. Connect Lovable to development Supabase
+21. Validate the Vercel preview against development Supabase
 22. Add GitHub database-test workflow
 
 Each card should contain:

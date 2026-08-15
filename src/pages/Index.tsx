@@ -3,44 +3,67 @@
  * Handles all main routes and displays appropriate content
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useAppState } from '@/hooks/useAppState';
-import { useReminders } from '@/hooks/useReminders';
-import { Header } from '@/components/layout/Header';
-import { lazy, Suspense } from 'react';
-import { OnboardingModal } from '@/components/layout/OnboardingModal';
-import { Dashboard } from '@/components/dashboard/Dashboard';
-import { Settings } from '@/components/settings/Settings';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
-// Lazy load heavy components for code splitting
-const SubjectOverview = lazy(() => import('@/pages/subjects/SubjectOverview').then(m => ({ default: m.default })));
-const SubjectSyllabus = lazy(() => import('@/pages/subjects/SubjectSyllabus').then(m => ({ default: m.default })));
-const SubjectPapers = lazy(() => import('@/pages/subjects/SubjectPapers').then(m => ({ default: m.default })));
-const Exams = lazy(() => import('@/pages/Exams'));
+import { Dashboard } from '@/components/dashboard/Dashboard';
+import { Header } from '@/components/layout/Header';
+import { OnboardingModal } from '@/components/layout/OnboardingModal';
 import { MilestoneToast } from '@/components/motivation/MilestoneToast';
 import { WeeklyReflection } from '@/components/reflection/WeeklyReflection';
-import { NavigationFilters } from '@/types';
-import { StreakData } from '@/types/reminders';
+import { Settings } from '@/components/settings/Settings';
+import { SubjectSelectionGate } from '@/components/subjects/SubjectSelectionGate';
+import { SubjectsSyncErrorBanner } from '@/components/subjects/SubjectsSyncErrorBanner';
+import { useAuth } from '@/features/auth/useAuth';
+import { useAppState } from '@/hooks/useAppState';
+import { useResolvedSubjects } from '@/features/subjects/useResolvedSubjects';
+import { isMockAIAvailable } from '@/ai/aiClient';
+import { useReminders } from '@/hooks/useReminders';
 import { loadStreakData, recordActivity } from '@/lib/streak';
+import type { Bullet, NavigationFilters, PastPaper } from '@/types';
+import { StreakData } from '@/types/reminders';
+import { useQueryClient } from '@tanstack/react-query';
+
+const SubjectOverview = lazy(() =>
+  import('@/pages/subjects/SubjectOverview').then((module) => ({
+    default: module.default,
+  })),
+);
+const SubjectSyllabus = lazy(() =>
+  import('@/pages/subjects/SubjectSyllabus').then((module) => ({
+    default: module.default,
+  })),
+);
+const SubjectPapers = lazy(() =>
+  import('@/pages/subjects/SubjectPapers').then((module) => ({
+    default: module.default,
+  })),
+);
+const Exams = lazy(() => import('@/pages/Exams'));
 
 const Index = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, profileLoading, completeOnboarding } = useAuth();
+  const queryClient = useQueryClient();
 
-  const [streakData, setStreakData] = useState<StreakData>(() => loadStreakData());
+  const [streakData, setStreakData] = useState<StreakData>(() =>
+    loadStreakData(),
+  );
   const [reflectionOpen, setReflectionOpen] = useState(false);
-  
-  // Reminders hook for notifications
+  const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+
   const {
     upcomingReminders,
     dismissReminder,
     snoozeReminder,
   } = useReminders();
+
   const {
-    state,
-    isLoading,
+    state: localState,
+    isLoading: isLocalLoading,
     addBullet,
     updateBullet,
     deleteBullet,
@@ -55,9 +78,27 @@ const Index = () => {
     clearSubjectData,
     checkDataIntegrity,
     repairAllDuplicates,
-  } = useAppState();
+  } = useAppState({ persistSubjects: false });
 
-  // Determine current view based on route
+  // Resolve subjects from server with fallback to local
+  const {
+    resolvedSubjects,
+    isLoading: isResolving,
+    isError: isSyncError,
+    shouldShowSelectionGate,
+    shouldShowSyncError,
+    hasGenuineFallback,
+  } = useResolvedSubjects(localState);
+
+  // Combine local state with resolved subjects for display
+  const displayState = useMemo(() => ({
+    ...localState,
+    subjects: resolvedSubjects,
+  }), [localState, resolvedSubjects]);
+  const aiFeaturesEnabled = isMockAIAvailable() && displayState.settings.aiFeaturesEnabled;
+
+  const isLoading = isLocalLoading || isResolving;
+
   const currentView = useMemo(() => {
     const path = location.pathname;
 
@@ -70,7 +111,8 @@ const Index = () => {
     }
 
     if (subjectId) {
-      const subject = state.subjects.find((s) => s.id === subjectId);
+      const subject = displayState.subjects.find((item) => item.id === subjectId);
+
       if (!subject) {
         return 'not_found';
       }
@@ -78,24 +120,25 @@ const Index = () => {
       if (path.endsWith('/syllabus')) {
         return 'subject_syllabus';
       }
+
       if (path.endsWith('/papers')) {
         return 'subject_papers';
       }
+
       return 'subject_overview';
     }
 
     return 'dashboard';
-  }, [location.pathname, subjectId, state.subjects]);
+  }, [location.pathname, subjectId, displayState.subjects]);
 
-  // Get current subject if on a subject page
   const currentSubject = useMemo(() => {
     if (subjectId) {
-      return state.subjects.find((s) => s.id === subjectId);
+      return displayState.subjects.find((subject) => subject.id === subjectId);
     }
-    return null;
-  }, [subjectId, state.subjects]);
 
-  // Handle navigation from dashboard cards
+    return null;
+  }, [subjectId, displayState.subjects]);
+
   const handleNavigate = useCallback(
     (filters: NavigationFilters) => {
       if (filters.tab === 'dashboard') {
@@ -107,10 +150,11 @@ const Index = () => {
           const path = filters.highlightId
             ? `/${filters.bulletFilters.subjectId}/syllabus?highlight=${filters.highlightId}`
             : `/${filters.bulletFilters.subjectId}/syllabus`;
+
           navigate(path);
         } else {
-          // Navigate to first subject's syllabus if no subjectId specified
-          const firstSubject = state.subjects[0];
+          const firstSubject = displayState.subjects[0];
+
           if (firstSubject) {
             navigate(`/${firstSubject.id}/syllabus`);
           }
@@ -120,58 +164,84 @@ const Index = () => {
           const path = filters.highlightId
             ? `/${filters.paperFilters.subjectId}/papers?highlight=${filters.highlightId}`
             : `/${filters.paperFilters.subjectId}/papers`;
+
           navigate(path);
         } else {
-          // Navigate to first subject's papers if no subjectId specified
-          const firstSubject = state.subjects[0];
+          const firstSubject = displayState.subjects[0];
+
           if (firstSubject) {
             navigate(`/${firstSubject.id}/papers`);
           }
         }
       }
     },
-    [navigate, state.subjects]
+    [navigate, displayState.subjects],
   );
 
-  // Track activity for streak
   const handleActivityRecorded = useCallback(() => {
     const newStreakData = recordActivity();
     setStreakData(newStreakData);
   }, []);
 
-  // Wrap update functions to record activity
   const handleUpdateBullet = useCallback(
-    (id: string, updates: Partial<typeof state.bullets[0]>) => {
+    (id: string, updates: Partial<Bullet>) => {
       updateBullet(id, updates);
-      // Record activity when marking something done/confident
+
       if (updates.done || updates.status === 'Green') {
         handleActivityRecorded();
       }
     },
-    [updateBullet, handleActivityRecorded]
+    [handleActivityRecorded, updateBullet],
   );
 
   const handleUpdatePaper = useCallback(
-    (id: string, updates: Partial<typeof state.pastPapers[0]>) => {
+    (id: string, updates: Partial<PastPaper>) => {
       updatePastPaper(id, updates);
-      // Record activity when completing a paper
+
       if (updates.completed) {
         handleActivityRecorded();
       }
     },
-    [updatePastPaper, handleActivityRecorded]
+    [handleActivityRecorded, updatePastPaper],
   );
 
-  const handleOnboardingComplete = () => {
-    updateSettings({ hasCompletedOnboarding: true });
-  };
+  const handleOnboardingComplete = useCallback(async () => {
+    if (onboardingSaving) {
+      return;
+    }
 
-  // Redirect invalid subject routes
+    setOnboardingSaving(true);
+    setOnboardingError(null);
+
+    try {
+      await completeOnboarding();
+
+      // Compatibility only: the database profile remains authoritative.
+      updateSettings({ hasCompletedOnboarding: true });
+    } catch (error) {
+      setOnboardingError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to complete onboarding. Please try again.',
+      );
+    } finally {
+      setOnboardingSaving(false);
+    }
+  }, [completeOnboarding, onboardingSaving, updateSettings]);
+
   useEffect(() => {
     if (currentView === 'not_found' && subjectId) {
       navigate('/');
     }
-  }, [currentView, subjectId, navigate]);
+  }, [currentView, navigate, subjectId]);
+
+  const handleRetrySync = useCallback(() => {
+    void queryClient.refetchQueries({ queryKey: ['subjects', 'user'] });
+  }, [queryClient]);
+
+  const handleSelectionComplete = useCallback(() => {
+    void queryClient.refetchQueries({ queryKey: ['subjects', 'user'] });
+  }, [queryClient]);
 
   if (isLoading) {
     return (
@@ -181,17 +251,46 @@ const Index = () => {
     );
   }
 
+  const shouldShowOnboarding =
+    !profileLoading &&
+    profile !== null &&
+    profile.onboarding_status !== 'completed';
+
+  // Show subject selection gate only if:
+  // - User is authenticated
+  // - Onboarding is completed
+  // - User has zero subjects
+  if (shouldShowSelectionGate && !shouldShowOnboarding) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header subjects={displayState.subjects} streakData={streakData} />
+        <SubjectSelectionGate
+          bullets={localState.bullets}
+          pastPapers={localState.pastPapers}
+          onComplete={handleSelectionComplete}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <Header subjects={state.subjects} streakData={streakData} />
+      <Header subjects={displayState.subjects} streakData={streakData} />
 
       <main className="container mx-auto px-4 py-6">
+        {shouldShowSyncError && (
+          <SubjectsSyncErrorBanner
+            hasGenuineFallback={hasGenuineFallback}
+            onRetry={handleRetrySync}
+          />
+        )}
+
         {currentView === 'dashboard' && (
           <Dashboard
-            subjects={state.subjects}
-            bullets={state.bullets}
-            pastPapers={state.pastPapers}
-            aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
+            subjects={displayState.subjects}
+            bullets={displayState.bullets}
+            pastPapers={displayState.pastPapers}
+            aiFeaturesEnabled={aiFeaturesEnabled}
             onNavigate={handleNavigate}
             upcomingReminders={upcomingReminders}
             onDismissReminder={dismissReminder}
@@ -202,7 +301,7 @@ const Index = () => {
 
         {currentView === 'settings' && (
           <Settings
-            state={state}
+            state={displayState}
             onUpdateSettings={updateSettings}
             onImportState={importState}
             onClearData={clearAllData}
@@ -214,7 +313,7 @@ const Index = () => {
 
         {currentView === 'exams' && (
           <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
-            <Exams subjects={state.subjects} />
+            <Exams subjects={displayState.subjects} />
           </Suspense>
         )}
 
@@ -222,10 +321,10 @@ const Index = () => {
           <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
             <SubjectOverview
               subject={currentSubject}
-              bullets={state.bullets}
-              pastPapers={state.pastPapers}
-              allSubjects={state.subjects}
-              aiFeaturesEnabled={state.settings.aiFeaturesEnabled}
+              bullets={displayState.bullets}
+              pastPapers={displayState.pastPapers}
+              allSubjects={displayState.subjects}
+              aiFeaturesEnabled={aiFeaturesEnabled}
               onUpdateBullet={handleUpdateBullet}
               onAddBullets={addBullets}
             />
@@ -236,7 +335,7 @@ const Index = () => {
           <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
             <SubjectSyllabus
               subject={currentSubject}
-              bullets={state.bullets}
+              bullets={displayState.bullets}
               onUpdateBullet={handleUpdateBullet}
             />
           </Suspense>
@@ -246,7 +345,7 @@ const Index = () => {
           <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
             <SubjectPapers
               subject={currentSubject}
-              pastPapers={state.pastPapers}
+              pastPapers={displayState.pastPapers}
               onAddPaper={addPastPaper}
               onUpdatePaper={handleUpdatePaper}
               onDeletePaper={deletePastPaper}
@@ -256,23 +355,23 @@ const Index = () => {
       </main>
 
       <OnboardingModal
-        open={!state.settings.hasCompletedOnboarding}
+        open={shouldShowOnboarding}
         onComplete={handleOnboardingComplete}
+        completing={onboardingSaving}
+        errorMessage={onboardingError}
       />
 
-      {/* Milestone celebration toasts */}
       <MilestoneToast
-        subjects={state.subjects}
-        bullets={state.bullets}
-        pastPapers={state.pastPapers}
+        subjects={displayState.subjects}
+        bullets={displayState.bullets}
+        pastPapers={displayState.pastPapers}
         streakDays={streakData.currentStreak}
       />
 
-      {/* Weekly reflection modal */}
       <WeeklyReflection
         open={reflectionOpen}
         onOpenChange={setReflectionOpen}
-        subjects={state.subjects}
+        subjects={displayState.subjects}
       />
     </div>
   );

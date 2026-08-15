@@ -43,6 +43,10 @@ export function ComponentDetailsModal({
     setAiLoading(true);
     try {
       const { provider } = getAIProviderWithFallback();
+      if (!provider) {
+        setAiInsights(['AI insights are deferred until protected server-side infrastructure is available.']);
+        return;
+      }
       const prompt = `Analyze this exam component performance and give 2-4 concise bullet-point suggestions for improvement.
 Component: ${stat.paperCode} ${stat.componentName}
 Attempts: ${stat.totalAttempts} total, ${stat.completedAttempts} completed

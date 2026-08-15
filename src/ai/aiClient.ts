@@ -1,159 +1,16 @@
 /**
  * AI Client - Provider-Agnostic Interface
  * 
- * This module provides a unified interface for AI providers.
- * 
- * DEFAULT PROVIDER: OpenRouter (VITE_AI_PROVIDER=openrouter)
- * 
- * To switch to OpenAI:
- * 1. Set VITE_AI_PROVIDER=openai in .env.local
- * 2. Set VITE_AI_API_KEY to your OpenAI API key
- * 
- * Environment Variables:
- * - VITE_AI_API_KEY: Your API key (required for real extraction)
- * - VITE_AI_PROVIDER: 'openrouter' (default) | 'openai' | 'mock'
+ * Real provider calls are intentionally unavailable in the browser. Production
+ * AI remains deferred until an authenticated server-side implementation exists.
+ * A deterministic mock provider may be enabled in local development with
+ * VITE_AI_PROVIDER=mock.
  */
 
 import { AIProvider, AIRequestOptions, AIError } from './types';
 import { ExtractionResult } from '@/types/syllabus';
 import { SYLLABUS_EXTRACTION_SYSTEM_PROMPT, generateSyllabusExtractionPrompt } from './prompts';
 import { validateExtractedSyllabus, safeJSONParse } from '@/lib/validation';
-
-/**
- * Default AI request options
- */
-const DEFAULT_OPTIONS: Required<AIRequestOptions> = {
-  maxTokens: 4000,
-  temperature: 0.3, // Lower temperature for more consistent extraction
-  systemPrompt: '',
-};
-
-/**
- * Provider configurations
- */
-const PROVIDER_CONFIG = {
-  openrouter: {
-    baseUrl: 'https://openrouter.ai/api/v1',
-    model: 'openai/gpt-4o-mini',
-    headers: (origin: string) => ({
-      'HTTP-Referer': origin,
-      'X-Title': 'Study Buddy Hub',
-    }),
-  },
-  openai: {
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o-mini',
-    headers: () => ({}),
-  },
-} as const;
-
-/**
- * OpenAI-compatible AI Provider (works with OpenRouter and OpenAI)
- */
-class OpenAICompatibleProvider implements AIProvider {
-  private apiKey: string;
-  private baseUrl: string;
-  private model: string;
-  private providerName: 'openrouter' | 'openai';
-
-  constructor(
-    apiKey: string,
-    providerName: 'openrouter' | 'openai' = 'openrouter'
-  ) {
-    this.apiKey = apiKey;
-    this.providerName = providerName;
-    const config = PROVIDER_CONFIG[providerName];
-    this.baseUrl = config.baseUrl;
-    this.model = config.model;
-  }
-
-  async generateText(prompt: string, options?: AIRequestOptions): Promise<string> {
-    const opts = { ...DEFAULT_OPTIONS, ...options };
-
-    try {
-      const additionalHeaders = PROVIDER_CONFIG[this.providerName].headers(
-        typeof window !== 'undefined' ? window.location.origin : 'https://studybuddy.app'
-      );
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        ...additionalHeaders,
-      };
-
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            ...(opts.systemPrompt ? [{ role: 'system', content: opts.systemPrompt }] : []),
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: opts.maxTokens,
-          temperature: opts.temperature,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-
-        if (response.status === 429) {
-          throw new AIError(
-            'Rate limit exceeded. Please try again later.',
-            'RATE_LIMIT',
-            errorData
-          );
-        }
-
-        if (response.status === 401) {
-          throw new AIError(
-            'Invalid API key. Please check your settings.',
-            'API_ERROR',
-            errorData
-          );
-        }
-
-        if (response.status === 402) {
-          throw new AIError(
-            'Insufficient credits. Please add credits to your account.',
-            'API_ERROR',
-            errorData
-          );
-        }
-
-        throw new AIError(
-          `API error: ${response.statusText}`,
-          'API_ERROR',
-          errorData
-        );
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        throw new AIError(
-          'Invalid response from AI provider',
-          'API_ERROR',
-          data
-        );
-      }
-
-      return content;
-    } catch (error) {
-      if (error instanceof AIError) {
-        throw error;
-      }
-
-      throw new AIError(
-        `Failed to generate AI response: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'UNKNOWN',
-        error
-      );
-    }
-  }
-}
 
 /**
  * Mock AI Provider (for development/testing without API key)
@@ -270,55 +127,37 @@ class MockAIProvider implements AIProvider {
 }
 
 /**
- * Get the current AI provider based on environment configuration
+ * Check whether the local-only mock provider is available.
  */
-export function getAIProvider(): AIProvider | null {
-  const apiKey = import.meta.env.VITE_AI_API_KEY;
-  const providerName = (import.meta.env.VITE_AI_PROVIDER || 'openrouter') as string;
-
-  // If explicitly set to mock, use mock provider
-  if (providerName === 'mock') {
-    return new MockAIProvider();
-  }
-
-  // If no API key, return null (caller should handle fallback)
-  if (!apiKey) {
-    return null;
-  }
-
-  // Use the appropriate provider
-  if (providerName === 'openai' || providerName === 'openrouter') {
-    return new OpenAICompatibleProvider(apiKey, providerName);
-  }
-
-  // Default to OpenRouter
-  return new OpenAICompatibleProvider(apiKey, 'openrouter');
+export function isMockAIAvailable(): boolean {
+  return import.meta.env.DEV && import.meta.env.VITE_AI_PROVIDER === 'mock';
 }
 
 /**
- * Get AI provider or mock fallback
+ * Get the local development provider. Production always returns null until the
+ * protected server-side AI phase is implemented.
  */
-export function getAIProviderWithFallback(): { provider: AIProvider; isMock: boolean } {
+export function getAIProvider(): AIProvider | null {
+  return isMockAIAvailable() ? new MockAIProvider() : null;
+}
+
+export function getAIProviderWithFallback(): { provider: AIProvider | null; isMock: boolean } {
   const provider = getAIProvider();
-  if (provider) {
-    return { provider, isMock: false };
-  }
-  return { provider: new MockAIProvider(), isMock: true };
+  return { provider, isMock: provider !== null };
 }
 
 /**
  * Check if AI is configured (has valid API key)
  */
 export function isAIConfigured(): boolean {
-  const apiKey = import.meta.env.VITE_AI_API_KEY;
-  return Boolean(apiKey && apiKey.length > 0);
+  return isMockAIAvailable();
 }
 
 /**
  * Get the current provider name
  */
 export function getProviderName(): string {
-  return (import.meta.env.VITE_AI_PROVIDER || 'openrouter') as string;
+  return isMockAIAvailable() ? 'Mock development provider' : 'Server AI deferred';
 }
 
 /**
@@ -328,6 +167,14 @@ export async function testAIConnection(): Promise<{ success: boolean; error?: st
   try {
     const { provider, isMock } = getAIProviderWithFallback();
     
+    if (!provider) {
+      return {
+        success: false,
+        error: 'AI is unavailable until protected server-side infrastructure is implemented.',
+        isMock: false,
+      };
+    }
+
     const response = await provider.generateText(
       'Say "Connection successful" and nothing else.',
       { maxTokens: 20, temperature: 0 }
@@ -354,6 +201,12 @@ export async function extractSyllabusFromPDF(
   availableSubjects: string[] = ['Mathematics', 'Physics', 'Information Technology']
 ): Promise<ExtractionResult> {
   const { provider, isMock } = getAIProviderWithFallback();
+  if (!provider) {
+    throw new AIError(
+      'AI extraction is deferred until protected server-side infrastructure is implemented.',
+      'API_ERROR',
+    );
+  }
   
   const prompt = generateSyllabusExtractionPrompt(pdfText, availableSubjects);
   

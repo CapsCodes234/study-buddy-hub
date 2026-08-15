@@ -58,7 +58,7 @@ export async function generateStudySummary(
   
   if (!provider) {
     throw new AIError(
-      'AI provider not configured. Please set VITE_AI_API_KEY in your environment.',
+      'AI summaries are unavailable until protected server-side infrastructure is implemented.',
       'API_ERROR'
     );
   }
@@ -123,7 +123,7 @@ export async function generateDailyFocus(
   
   if (!provider) {
     throw new AIError(
-      'AI provider not configured. Please set VITE_AI_API_KEY in your environment.',
+      'AI recommendations are unavailable until protected server-side infrastructure is implemented.',
       'API_ERROR'
     );
   }

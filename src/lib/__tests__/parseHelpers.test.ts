@@ -41,17 +41,17 @@ describe('extractComponentMarks', () => {
 describe('parseTopicNumbering', () => {
   it('parses numbered topics', () => {
     const result = parseTopicNumbering('1. Mechanics');
-    expect(result).toEqual({ orderNumber: 1, name: 'Mechanics' });
+    expect(result).toEqual({ number: '1', cleanText: 'Mechanics', level: 1 });
   });
 
   it('parses topics with dot notation', () => {
     const result = parseTopicNumbering('2.1 Forces');
-    expect(result).toEqual({ orderNumber: 2, name: 'Forces' });
+    expect(result).toEqual({ number: '2.1', cleanText: 'Forces', level: 2 });
   });
 
   it('handles topics without numbers', () => {
     const result = parseTopicNumbering('Thermodynamics');
-    expect(result).toEqual({ orderNumber: null, name: 'Thermodynamics' });
+    expect(result).toEqual({ number: null, cleanText: 'Thermodynamics', level: 0 });
   });
 });
 
