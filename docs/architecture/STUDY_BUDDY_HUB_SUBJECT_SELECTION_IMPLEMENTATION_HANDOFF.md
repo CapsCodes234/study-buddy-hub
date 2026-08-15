@@ -1,9 +1,9 @@
 # Study Buddy Hub — Subject Selection Implementation Handoff
 
-**Status:** Implementation and local acceptance complete; hosted preview/production validation pending
+**Status:** Implementation, local acceptance, and hosted development validation complete; **MERGE CLEARED**
 
 **Branch:** `feat/subject-selection-foundation`
-**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint and its remaining hosted-validation/def
+**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint, final hosted-development validation, merge clearance, and deferred follow-up work.
 
 ## Implementation Fixes Applied
 
@@ -45,7 +45,25 @@ The following fixes were applied to the initial implementation to address critic
 
 18. **Optional syllabus version**: A successful lookup with no active syllabus/version returns `null`; query failures throw. Catalogue selection remains allowed without a version where the existing RPC permits it.
 
-19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted Vercel preview, hosted Supabase, production deployment, GitHub Actions hosted execution, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
+19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted development validation is complete as recorded below. Production deployment, GitHub Actions hosted execution, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
+
+## Final Hosted Validation and Merge Clearance
+
+| Check | Final result |
+| --- | --- |
+| Hosted Supabase migrations | 17/17 aligned |
+| Hosted catalogue seed | PASS |
+| Vercel Preview | PASS |
+| SPA fallback | PASS |
+| QA User A | PASS |
+| QA User B | PASS |
+| Cross-user isolation | PASS |
+| Email confirmation | PASS |
+| Cross-device confirmation UX | Non-blocking follow-up |
+| `npm audit` current | 0 vulnerabilities |
+| Final merge clearance | **MERGE CLEARED** |
+
+The cross-device confirmation behavior does not block the merge and remains a follow-up UX improvement.
 
 ---
 
@@ -1071,4 +1089,4 @@ feat/subject-selection-foundation
 
 ## Implementation Authorization
 
-This document records the approved architecture for the subject-selection checkpoint. Implementation and local acceptance are complete; hosted validation and the explicitly deferred work above remain pending.
+This document records the approved architecture for the subject-selection checkpoint. Implementation, local acceptance, and hosted development validation are complete, and the checkpoint is **MERGE CLEARED**. Only the explicitly deferred production/future work and the non-blocking cross-device confirmation UX follow-up remain.
