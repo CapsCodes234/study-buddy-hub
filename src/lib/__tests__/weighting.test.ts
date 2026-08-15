@@ -4,6 +4,15 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Bullet, Subject, PastPaper } from '@/types';
+import {
+  calculateRawProgress,
+  calculateSubjectWeightedProgress,
+  calculateWeightedProgress,
+  getProgressSummary,
+  inferDefaultWeights,
+  loadWeightingConfig,
+  saveWeightingConfig,
+} from '@/lib/insights/weighting';
 
 // Mock localStorage
 const mockStorage: Record<string, string> = {};
@@ -45,9 +54,7 @@ describe('Weighting Library', () => {
   });
 
   describe('calculateRawProgress', () => {
-    it('calculates correct percentage for mixed bullets', async () => {
-      const { calculateRawProgress } = await import('@/lib/insights/weighting');
-      
+    it('calculates correct percentage for mixed bullets', () => {
       const bullets: Bullet[] = [
         createMockBullet('1', 'math', 'Green', true), // Confident
         createMockBullet('2', 'math', 'Amber', false), // In progress
@@ -62,9 +69,7 @@ describe('Weighting Library', () => {
       expect(progress.percentage).toBe(50);
     });
 
-    it('returns 0 for empty bullets array', async () => {
-      const { calculateRawProgress } = await import('@/lib/insights/weighting');
-      
+    it('returns 0 for empty bullets array', () => {
       const progress = calculateRawProgress([]);
       
       expect(progress.totalTopics).toBe(0);
@@ -72,9 +77,7 @@ describe('Weighting Library', () => {
       expect(progress.percentage).toBe(0);
     });
 
-    it('returns 100 when all bullets are confident', async () => {
-      const { calculateRawProgress } = await import('@/lib/insights/weighting');
-      
+    it('returns 100 when all bullets are confident', () => {
       const bullets: Bullet[] = [
         createMockBullet('1', 'math', 'Green', true),
         createMockBullet('2', 'math', 'Green', true),
@@ -88,9 +91,7 @@ describe('Weighting Library', () => {
   });
 
   describe('calculateWeightedProgress', () => {
-    it('applies default weight of 1.0 when no config exists', async () => {
-      const { calculateWeightedProgress, loadWeightingConfig } = await import('@/lib/insights/weighting');
-      
+    it('applies default weight of 1.0 when no config exists', () => {
       const bullets: Bullet[] = [
         createMockBullet('1', 'math', 'Green', true),
         createMockBullet('2', 'math', 'Red', false),
@@ -103,9 +104,7 @@ describe('Weighting Library', () => {
       expect(progress.percentage).toBe(50);
     });
 
-    it('applies topic weights correctly', async () => {
-      const { calculateWeightedProgress, saveWeightingConfig } = await import('@/lib/insights/weighting');
-      
+    it('applies topic weights correctly', () => {
       const config = {
         topicWeights: [
           { topicId: '1', difficulty: 'hard' as const, examRelevance: 'high' as const },
@@ -129,9 +128,7 @@ describe('Weighting Library', () => {
       expect(progress.percentage).toBeCloseTo(70.9, 0);
     });
 
-    it('respects custom weight override', async () => {
-      const { calculateWeightedProgress } = await import('@/lib/insights/weighting');
-      
+    it('respects custom weight override', () => {
       const config = {
         topicWeights: [
           { topicId: '1', difficulty: 'medium' as const, examRelevance: 'medium' as const, customWeight: 2.0 },
@@ -153,9 +150,7 @@ describe('Weighting Library', () => {
   });
 
   describe('calculateSubjectWeightedProgress', () => {
-    it('filters bullets by subject', async () => {
-      const { calculateSubjectWeightedProgress, loadWeightingConfig } = await import('@/lib/insights/weighting');
-      
+    it('filters bullets by subject', () => {
       const bullets: Bullet[] = [
         createMockBullet('1', 'math', 'Green', true),
         createMockBullet('2', 'math', 'Red', false),
@@ -174,9 +169,7 @@ describe('Weighting Library', () => {
       expect(physicsProgress.raw.percentage).toBe(100);
     });
 
-    it('calculates difference between raw and weighted', async () => {
-      const { calculateSubjectWeightedProgress, saveWeightingConfig } = await import('@/lib/insights/weighting');
-      
+    it('calculates difference between raw and weighted', () => {
       const config = {
         topicWeights: [
           { topicId: '1', difficulty: 'hard' as const, examRelevance: 'high' as const },
@@ -201,9 +194,7 @@ describe('Weighting Library', () => {
   });
 
   describe('inferDefaultWeights', () => {
-    it('assigns higher weights to larger topics', async () => {
-      const { inferDefaultWeights } = await import('@/lib/insights/weighting');
-      
+    it('assigns higher weights to larger topics', () => {
       // Create bullets with varying topic sizes
       const bullets: Bullet[] = [
         // Large topic (4 bullets)
@@ -229,9 +220,7 @@ describe('Weighting Library', () => {
   });
 
   describe('getProgressSummary', () => {
-    it('returns comprehensive summary', async () => {
-      const { getProgressSummary } = await import('@/lib/insights/weighting');
-      
+    it('returns comprehensive summary', () => {
       const subjects: Subject[] = [
         { id: 'math', name: 'Mathematics', color: '#000' },
         { id: 'physics', name: 'Physics', color: '#000' },

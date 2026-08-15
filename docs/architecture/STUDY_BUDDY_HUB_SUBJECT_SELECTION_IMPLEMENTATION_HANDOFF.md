@@ -1,14 +1,15 @@
 # Study Buddy Hub — Subject Selection Implementation Handoff
 
-**Status:** Implementation complete with fixes applied  
-**Branch:** `feat/subject-selection-foundation`  
+**Status:** Implementation and local acceptance complete; hosted preview/production validation pending
+
+**Branch:** `fix/current-repo-stabilization`
 **Purpose:** Persistent handoff for Cursor/other coding agents to resume the authenticated subject-selection checkpoint safely.
 
 ## Implementation Fixes Applied
 
 The following fixes were applied to the initial implementation to address critical issues:
 
-1. **Authenticated Subject Persistence**: Modified `useAppState` to accept explicit `persistSubjects` option instead of inferring from local state. Passes `{ persistSubjects: profile !== null }` in `Index.tsx`.
+1. **Authenticated Subject Persistence**: `Index.tsx` starts authenticated application operation with `{ persistSubjects: false }`. Local bullets, papers, and settings continue saving, while the local subject array remains a frozen compatibility/recovery snapshot.
 
 2. **No-Snapshot Persistence**: Fixed `saveData` in `storage.ts` to preserve empty subjects array when no genuine legacy snapshot exists, avoiding fallback to DEFAULT_SUBJECTS.
 
@@ -28,13 +29,23 @@ The following fixes were applied to the initial implementation to address critic
 
 10. **Catalogue Picker Consolidation**: Removed duplicate `CatalogueSubjectPicker.tsx` component; consolidated into `SubjectManageSection`.
 
-11. **Query Cache Lifecycle**: Added user-specific query cache invalidation on logout/user change in `AuthProvider.tsx`.
+11. **Query Cache Lifecycle**: Old-user active and archived subject queries are removed on logout/account change. The shared catalogue cache is retained and previous-user data is never used as placeholder data.
 
 12. **Legacy Error Fallback**: Fixed `loadData` in `storage.ts` to distinguish between missing subjects key (use DEFAULT_SUBJECTS) and explicitly empty subjects array (preserve []).
 
 13. **Legacy Color Preservation**: Added `LEGACY_COLORS` map in `catalogueUiIds.ts` to preserve original colors for math, physics, it.
 
-14. **Test Coverage**: Updated `storagePersistence.test.ts` with tests covering all three states: no storage, explicit empty array, and non-empty legacy array.
+14. **Test Coverage**: Persistence tests cover no storage, explicit empty, genuine validated snapshot, and malformed subject data. The selection-gate test covers asynchronous catalogue arrival and one-time legacy preselection.
+
+15. **Catalogue and custom workflows**: Official subjects come from `public.catalogue_subjects`; custom subjects use a separate explicit form. Existing active catalogue subjects are excluded, the seven-subject maximum is enforced in UI and database, and later additions append after the highest active `sort_order`.
+
+16. **Partial initial creation**: Initial catalogue selections are created sequentially in catalogue order with incremental sort values. Successful rows are retained, processing stops on the first failure, and authoritative user subjects are refetched before leaving the gate.
+
+17. **Custom cleanup boundary**: If selecting a newly inserted custom definition fails, only that operation's exact custom-subject ID/version is eligible for best-effort soft-delete. Cleanup errors are logged separately and the original failure remains user-facing.
+
+18. **Optional syllabus version**: A successful lookup with no active syllabus/version returns `null`; query failures throw. Catalogue selection remains allowed without a version where the existing RPC permits it.
+
+19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted Vercel preview, hosted Supabase, production deployment, GitHub Actions hosted execution, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
 
 ---
 
@@ -991,6 +1002,17 @@ The first production catalogue target is Cambridge International AS & A Level.
 A separate future checkpoint will populate the full official Cambridge subject list.
 
 Future boards/qualifications should be addable largely through catalogue data rather than rewriting subject-selection UI.
+
+The current future-subject UI ID fallback uses the catalogue slug. Before multiple
+boards or qualifications are enabled, subject identity must be revisited so two
+catalogue rows with the same slug cannot collide in routes or legacy study-data
+references. That concern is deliberately deferred; the current checkpoint targets
+Cambridge International AS & A Level only.
+
+`DEFAULT_SUBJECTS` also remains a transitional compatibility dependency in
+`storage.ts`, initial-state/bootstrap behavior, import fallback, syllabus storage,
+and default component seeding. Authenticated subject authority is decoupled from
+those defaults, but deleting them requires a separate migration checkpoint.
 
 ---
 

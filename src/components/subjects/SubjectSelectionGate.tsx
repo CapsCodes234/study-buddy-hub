@@ -3,12 +3,14 @@
  * 
  * Shown when an authenticated user has zero selected subjects.
  * Provides a generic, catalogue-driven subject selection interface.
- * Pre-checks subjects that have local study data.
+ * Pre-checks subjects that have local study data once catalogue data arrives.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCatalogueSubjects } from '@/features/subjects/useCatalogueSubjects';
 import { useSubjectMutations } from '@/features/subjects/useSubjectMutations';
+import { createInitialCatalogueSelections } from '@/features/subjects/initialSubjectSelection';
 import { getPreSelectedSubjectIds } from '@/lib/subjects/legacySubjectUsage';
 import { catalogueSlugToUiId } from '@/lib/subjects/catalogueUiIds';
 import type { Bullet, PastPaper } from '@/types';
@@ -19,8 +21,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Search, Plus } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { CustomSubjectForm, type CustomSubjectFormValues } from './CustomSubjectForm';
 
 interface SubjectSelectionGateProps {
   bullets: Bullet[];
@@ -33,40 +36,66 @@ export function SubjectSelectionGate({
   pastPapers,
   onComplete,
 }: SubjectSelectionGateProps) {
-  const { data: catalogueSubjects, isLoading: isLoadingCatalogue, isError: isCatalogueError, error: catalogueError } = useCatalogueSubjects();
+  const {
+    data: catalogueSubjects,
+    isLoading: isLoadingCatalogue,
+    isError: isCatalogueError,
+    refetch: refetchCatalogue,
+  } = useCatalogueSubjects();
   const { addCatalogueSubject, addCustomSubject } = useSubjectMutations();
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [activeTab, setActiveTab] = useState<'catalogue' | 'custom'>('catalogue');
+  const [selectedCatalogueIds, setSelectedCatalogueIds] = useState<Set<string>>(new Set());
+
+  const hasInitializedPreselectionRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
 
   // Get pre-selected local UI IDs (e.g., "math", "physics", "it")
   const preSelectedLocalIds = useMemo(() => {
     return new Set(getPreSelectedSubjectIds(bullets, pastPapers));
   }, [bullets, pastPapers]);
 
-  // Map catalogue subjects to their UI IDs and preselect matching ones
-  const [selectedCatalogueIds, setSelectedCatalogueIds] = useState<Set<string>>(() => {
-    const selected = new Set<string>();
-    if (catalogueSubjects) {
-      catalogueSubjects.forEach(subject => {
+  // Asynchronous pre-selection initialization: run exactly once when catalogue data arrives
+  useEffect(() => {
+    if (
+      catalogueSubjects &&
+      catalogueSubjects.length > 0 &&
+      !hasInitializedPreselectionRef.current &&
+      !hasUserInteractedRef.current
+    ) {
+      hasInitializedPreselectionRef.current = true;
+      const initialSet = new Set<string>();
+      catalogueSubjects.forEach((subject) => {
         const uiId = catalogueSlugToUiId(subject.slug);
         if (preSelectedLocalIds.has(uiId)) {
-          selected.add(subject.id);
+          initialSet.add(subject.id);
         }
       });
+      setSelectedCatalogueIds(initialSet);
     }
-    return selected;
-  });
+  }, [catalogueSubjects, preSelectedLocalIds]);
 
   // Filter catalogue subjects by search
-  const filteredCatalogueSubjects = catalogueSubjects?.filter(subject =>
-    subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    subject.code?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredCatalogueSubjects = useMemo(() => {
+    return (
+      catalogueSubjects?.filter(
+        (subject) =>
+          subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          subject.code?.toLowerCase().includes(searchQuery.toLowerCase())
+      ) || []
+    );
+  }, [catalogueSubjects, searchQuery]);
 
   const handleToggleCatalogueSubject = (catalogueSubjectId: string) => {
-    setSelectedCatalogueIds(prev => {
+    hasUserInteractedRef.current = true;
+    if (!selectedCatalogueIds.has(catalogueSubjectId) && selectedCatalogueIds.size >= 7) {
+      toast.error('You can select up to 7 subjects');
+      return;
+    }
+    setSelectedCatalogueIds((prev) => {
       const next = new Set(prev);
       if (next.has(catalogueSubjectId)) {
         next.delete(catalogueSubjectId);
@@ -89,37 +118,51 @@ export function SubjectSelectionGate({
     }
 
     setIsSubmitting(true);
-
-    try {
-      // Add each selected catalogue subject
-      const promises = Array.from(selectedCatalogueIds).map(id =>
-        addCatalogueSubject.mutateAsync(id)
+    const selectedArray = (catalogueSubjects || [])
+      .filter((subject) => selectedCatalogueIds.has(subject.id))
+      .map((subject) => subject.id);
+    const { successfulIds, failedId: failedSubjectId, error: creationError } =
+      await createInitialCatalogueSelections(
+        selectedArray,
+        (catalogueSubjectId, sortOrder) => addCatalogueSubject.mutateAsync({
+          catalogueSubjectId,
+          sortOrder,
+        }),
       );
+    const successCount = successfulIds.length;
+    if (failedSubjectId) {
+      console.error(`Failed to add subject ${failedSubjectId}:`, creationError);
+    }
 
-      await Promise.all(promises);
+    if (successCount > 0) {
+      await queryClient.refetchQueries({ queryKey: ['subjects', 'user'] });
+    }
+    setIsSubmitting(false);
 
-      toast.success('Subjects added successfully');
+    if (successCount > 0 && !failedSubjectId) {
+      toast.success(
+        `Successfully added ${successCount} subject${successCount > 1 ? 's' : ''}`
+      );
       onComplete();
-    } catch (error) {
-      console.error('Failed to add subjects:', error);
+    } else if (successCount > 0) {
+      toast.warning(
+        `Added ${successCount} subject${successCount > 1 ? 's' : ''}. The remaining selection was not added after an error.`
+      );
+      onComplete();
+    } else {
       toast.error('Failed to add subjects. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const handleAddCustomSubject = async (params: {
-    name: string;
-    code?: string;
-    qualificationLabel?: string;
-    description?: string;
-  }) => {
+  const handleAddCustomSubject = async (values: CustomSubjectFormValues) => {
     setIsSubmitting(true);
 
     try {
-      await addCustomSubject.mutateAsync(params);
+      await addCustomSubject.mutateAsync({
+        ...values,
+        sortOrder: 0,
+      });
       toast.success('Custom subject added successfully');
-      setShowCustomForm(false);
       onComplete();
     } catch (error) {
       console.error('Failed to add custom subject:', error);
@@ -129,13 +172,11 @@ export function SubjectSelectionGate({
     }
   };
 
-  const handleRetryCatalogue = () => {
-    window.location.reload();
-  };
+  const handleRetryCatalogue = () => void refetchCatalogue();
 
   if (isLoadingCatalogue) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -143,7 +184,7 @@ export function SubjectSelectionGate({
 
   if (isCatalogueError) {
     return (
-      <div className="container max-w-4xl mx-auto py-8">
+      <div className="container mx-auto max-w-4xl py-8">
         <Card>
           <CardHeader>
             <CardTitle className="text-destructive">Unable to Load Subjects</CardTitle>
@@ -163,7 +204,7 @@ export function SubjectSelectionGate({
   }
 
   return (
-    <div className="container max-w-4xl mx-auto py-8">
+    <div className="container mx-auto max-w-4xl py-8">
       <Card>
         <CardHeader>
           <CardTitle>Select Your Subjects</CardTitle>
@@ -173,7 +214,11 @@ export function SubjectSelectionGate({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="catalogue" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => setActiveTab(val as 'catalogue' | 'custom')}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="catalogue">Catalogue Subjects</TabsTrigger>
               <TabsTrigger value="custom">Custom Subject</TabsTrigger>
@@ -183,7 +228,7 @@ export function SubjectSelectionGate({
               <div className="space-y-4">
                 {/* Search */}
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search subjects by name or code..."
                     value={searchQuery}
@@ -194,16 +239,18 @@ export function SubjectSelectionGate({
 
                 {/* Subject List */}
                 <ScrollArea className="h-[300px] rounded-md border">
-                  <div className="p-4 space-y-2">
+                  <div className="space-y-2 p-4">
                     {filteredCatalogueSubjects.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        No subjects found matching your search.
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        {searchQuery
+                          ? 'No subjects found matching your search.'
+                          : 'No catalogue subjects available.'}
                       </p>
                     ) : (
-                      filteredCatalogueSubjects.map(subject => (
+                      filteredCatalogueSubjects.map((subject) => (
                         <div
                           key={subject.id}
-                          className="flex items-center space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                          className="flex items-center space-x-3 rounded-lg p-3 transition-colors hover:bg-muted/50"
                         >
                           <Checkbox
                             id={subject.id}
@@ -244,7 +291,11 @@ export function SubjectSelectionGate({
                 {/* Confirm Button */}
                 <Button
                   onClick={handleConfirmSelection}
-                  disabled={selectedCatalogueIds.size === 0 || selectedCatalogueIds.size > 7 || isSubmitting}
+                  disabled={
+                    selectedCatalogueIds.size === 0 ||
+                    selectedCatalogueIds.size > 7 ||
+                    isSubmitting
+                  }
                   className="w-full"
                 >
                   {isSubmitting ? (
@@ -263,124 +314,12 @@ export function SubjectSelectionGate({
               <CustomSubjectForm
                 onSubmit={handleAddCustomSubject}
                 isSubmitting={isSubmitting}
-                onCancel={() => setShowCustomForm(false)}
+                onCancel={() => setActiveTab('catalogue')}
               />
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/**
- * Custom Subject Form Component
- */
-function CustomSubjectForm({
-  onSubmit,
-  isSubmitting,
-  onCancel,
-}: {
-  onSubmit: (params: {
-    name: string;
-    code?: string;
-    qualificationLabel?: string;
-    description?: string;
-  }) => void;
-  isSubmitting: boolean;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [qualificationLabel, setQualificationLabel] = useState('');
-  const [description, setDescription] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!name.trim()) {
-      toast.error('Subject name is required');
-      return;
-    }
-
-    onSubmit({
-      name: name.trim(),
-      code: code.trim() || undefined,
-      qualificationLabel: qualificationLabel.trim() || undefined,
-      description: description.trim() || undefined,
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="custom-name">Subject Name *</Label>
-        <Input
-          id="custom-name"
-          placeholder="e.g., Computer Science"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="custom-code">Subject Code (optional)</Label>
-        <Input
-          id="custom-code"
-          placeholder="e.g., CS"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="custom-qualification">Qualification (optional)</Label>
-        <Input
-          id="custom-qualification"
-          placeholder="e.g., A-Level, IB"
-          value={qualificationLabel}
-          onChange={(e) => setQualificationLabel(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="custom-description">Description (optional)</Label>
-        <Input
-          id="custom-description"
-          placeholder="Brief description of the subject"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Adding...
-            </>
-          ) : (
-            <>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Custom Subject
-            </>
-          )}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
   );
 }

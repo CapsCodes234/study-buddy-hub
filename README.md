@@ -1,224 +1,84 @@
-# Study Tracker (Study Buddy Hub)
+# Study Buddy Hub
 
-A personal, local-first study tracking application with AI-powered syllabus extraction, past paper logging, and exam countdown features.
+Study Buddy Hub is a React, TypeScript, and Vite PWA for Cambridge International AS & A Level study tracking. The repository is being migrated incrementally from a local-first application to an authenticated Supabase-backed product.
 
-## Features
+## Current status
 
-- **AI-Powered Syllabus Extraction**: Upload PDF syllabi and extract structured topics automatically
-- **CSV Import (Subject-Scoped)**: Import syllabus topics and component metadata locked to the current subject
-- **Past Paper Logging (Raw Marks)**: Track raw marks per component with automatic percentage conversion
-- **Past Paper Analytics**: Year → Session → Variant grouping + cross-subject yearly performance
-- **Exam Countdown**: Schedule exams and get reminders
-- **Progress Tracking**: Visual progress for each subject and topic
-- **Theme Support**: Light, dark, and system themes with accessibility features
+### Currently implemented
 
-## Getting Started
+- Supabase authentication, protected routes, session restoration, profiles, and database-backed onboarding.
+- Catalogue-driven authenticated subject selection with custom subjects, archive/restore, stable legacy UI IDs, and a maximum of seven active subjects.
+- Local syllabus bullets, confidence tracking, notes, past-paper attempts, analytics, reminders, reflections, themes, accessibility settings, and backup compatibility.
+- TanStack Query for current cloud subject state.
+- Vite PWA support and Vercel-compatible Git deployment.
 
-### Prerequisites
+### Planned / in migration
 
-- Node.js & npm - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- Supabase persistence for syllabus progress, notes, components, past papers, and other private study data.
+- IndexedDB caching, a durable offline operation queue, conflict handling, and guided migration of legacy browser data.
+- A protected server-side AI pipeline with authentication, quotas, validation, and provider secrets kept outside the browser.
+- Encrypted export/import and wider private-beta hardening.
 
-### Installation
+### Deferred
+
+- Real AI provider access from the application until the protected server-side pipeline exists.
+- Multi-board and multi-qualification catalogue support beyond the initial Cambridge International AS & A Level target.
+- Full notification orchestration, Google Calendar integration, and offline conflict-resolution UX.
+
+The cloud subject selection is authoritative for authenticated users. Bullets, past papers, settings, and other not-yet-migrated study data continue to use local compatibility storage during this staged migration; the repository does not claim that all study data is cloud-synchronised.
+
+## Local development
+
+Requirements: Node.js 22 LTS and npm.
 
 ```sh
-# Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Navigate to project directory
-cd <YOUR_PROJECT_NAME>
-
-# Install dependencies
-npm i
-
-# Start development server
+npm ci
 npm run dev
 ```
 
-## AI Extraction Setup
-
-This app supports AI-powered syllabus extraction from PDF files. The AI features are **read-only and advisory** - no data is saved until you explicitly confirm.
-
-### Environment Variables
-
-Create a `.env.local` file in the project root:
+Copy `.env.example` to `.env.local` and use the local or approved development Supabase values:
 
 ```env
-# AI Provider: 'openrouter' (default) or 'openai'
-VITE_AI_PROVIDER=openrouter
-
-# Your API key
-VITE_AI_API_KEY=your_api_key_here
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 ```
 
-### Supported Providers
+Never place service-role credentials, database passwords, or real AI provider secrets in `VITE_*` variables. Those variables are included in the browser bundle.
 
-1. **OpenRouter (default)**: Recommended for cost-effective AI usage
-   - Sign up at [openrouter.ai](https://openrouter.ai)
-   - Uses `google/gemini-2.0-flash-001` model by default
-   - Set a monthly credit limit to control costs
+An optional deterministic AI mock is available only during local development:
 
-2. **OpenAI**: Higher-capacity models
-   - Set `VITE_AI_PROVIDER=openai`
-   - Uses `gpt-4o-mini` by default
-   - Get API key from [platform.openai.com](https://platform.openai.com)
-
-3. **Mock Provider**: For development without API keys
-   - Set `VITE_AI_PROVIDER=mock`
-   - Returns sample extraction data
-
-### How to Use PDF Extraction Safely
-
-1. **Upload**: Drag & drop or select a PDF syllabus file
-2. **Review**: The extraction modal shows detected topics with confidence scores
-3. **Edit**: Modify, merge, or split topics as needed
-4. **Accept**: Only after clicking "Save" is data written to your app
-5. **Changelog**: Original extractions are preserved for re-review
-
-### Cost Safeguards
-
-- **Set credit limits**: On OpenRouter, set a monthly limit (e.g., $5/month)
-- **Mock mode**: Use `VITE_AI_PROVIDER=mock` for testing without API costs
-- **Review before save**: AI results are always previewed before saving
-
-## CSV Import
-
-As a fallback to AI extraction, you can import data via CSV.
-
-CSV import is **subject-scoped**: imports are performed from a subject page and the imported rows are **automatically assigned** to that subject.
-
-### Supported Formats
-
-#### 1) Syllabus Topics CSV
-
-```csv
-MainTopic,Subtopic,Bullet,TopicNumber,OutcomeNumber
-Mechanics,Forces,Newton's laws,1,1
+```env
+VITE_AI_PROVIDER=mock
 ```
 
-- **Required columns**
-  - `MainTopic`
-  - `Subtopic`
-  - `Bullet`
-- **Optional columns**
-  - `TopicNumber`
-  - `OutcomeNumber`
+The mock uses no provider credential and does not enable production AI.
 
-#### 2) Past Paper Components CSV
+## Standard checks
 
-```csv
-ComponentName,PaperCode,DurationMin,TotalMarks,WeightingPercent
-Paper 1 (Multiple Choice),9702/12,75,40,30
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-- **Required columns**
-  - `ComponentName`
-  - `PaperCode`
-  - `DurationMin`
-  - `TotalMarks`
-- **Optional columns**
-  - `WeightingPercent`
+For local database validation when the Supabase stack is running:
 
-### How to Import
+```sh
+npx supabase db lint --level warning
+npx supabase test db
+```
 
-1. Go to a subject page (e.g. `/physics`)
-2. Use the CSV import panel and upload your file
-3. Review the preview
-4. Click **Confirm Import**
+Do not reset or push a linked Supabase database merely to run these checks.
 
-## Reminder System
+## Deployment
 
-### Default Settings
+The frontend is intended for Vercel Git deployment using the npm lockfile. Production configuration requires the public Supabase URL and publishable key only. Protected server secrets belong in the relevant trusted backend environment when those later phases are implemented.
 
-- **Remind Later Interval**: 3 days (configurable)
-- **Main Exam Lead Days**: 7, 3, 1 days before
-- **Mock Exam Lead Days**: 3, 1 days before
+## Documentation
 
-### Configuring Reminders
-
-1. Go to Settings → Reminder Settings
-2. Adjust default intervals
-3. Set per-exam-type lead times
-4. Enable/disable all reminders
-
-## What technologies are used?
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## Theme Customization
-
-The app supports light, dark, and system themes with full accessibility features.
-
-### Changing Theme Tokens
-
-Theme colors are defined as HSL values in `src/index.css`. To add or modify a color:
-
-1. Add the HSL values (without `hsl()` wrapper) to both `:root` (light) and `.dark` sections:
-   ```css
-   :root {
-     --my-color: 220 80% 50%;
-   }
-   .dark {
-     --my-color: 220 70% 60%;
-   }
-   ```
-
-2. Add to `tailwind.config.ts` colors section:
-   ```ts
-   colors: {
-     'my-color': 'hsl(var(--my-color))',
-   }
-   ```
-
-3. Use in components: `className="bg-my-color text-my-color"`
-
-### Accessibility Features
-
-- **Reduced Motion**: Respects `prefers-reduced-motion` and can be toggled in Settings
-- **High Contrast**: Enhanced contrast mode available in Settings
-- **WCAG Compliance**: All colors meet AA contrast requirements (4.5:1 normal text, 3:1 large text)
-- **Focus States**: Visible focus indicators on all interactive elements
-
-### Storage Keys
-
-- `study-tracker:theme` - light/dark/system
-- `study-tracker:reduced-motion` - true/false  
-- `study-tracker:high-contrast` - true/false
-
-Additional app storage:
-
-- `study-tracker-data` - main app state (subjects, bullets, past papers, settings)
-- `study-tracker-components` - imported component metadata (subject-scoped)
-- `study-tracker-exam-schedule` - exam schedule items
-- `study-tracker-reminder-settings` - reminder lead times and settings
-
-## Past Paper Logging
-
-Past papers are logged using a **component-linked raw mark model**:
-
-- Select a **Component** (from imported component metadata)
-- Enter **Raw Score** and it auto-calculates **Percentage**
-- Optionally log **Duration Used** and **Notes**
-
-The Papers page displays results grouped:
-
-- Year → Session → Variant
-
-Dashboard analytics include:
-
-- Cross-subject yearly performance (best/worst year)
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- [Stage 2 requirements](docs/STUDY_BUDDY_HUB_STAGE_2_REQUIREMENTS_SCOPE.md)
+- [Approved Stage 3 architecture](docs/STUDY_BUDDY_HUB_STAGE_3_ARCHITECTURE_PLAN_DRAFT_3_APPROVED.md)
+- [Subject-selection handoff](docs/architecture/STUDY_BUDDY_HUB_SUBJECT_SELECTION_IMPLEMENTATION_HANDOFF.md)
+- [Security notes](docs/security/SECURITY_NOTES.md)
+- [Manual QA checklist](docs/qa/MANUAL_QA_CHECKLIST.md)

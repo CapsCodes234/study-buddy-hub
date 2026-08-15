@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -66,7 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const [previousUserId, setPreviousUserId] = useState<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -120,10 +121,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setProfileLoading(false);
 
       // Clear user-specific query data on logout
-      if (previousUserId) {
-        queryClient.invalidateQueries({ queryKey: subjectQueryKeys.user(previousUserId) });
-        queryClient.invalidateQueries({ queryKey: subjectQueryKeys.userArchived(previousUserId) });
-        setPreviousUserId(null);
+      if (previousUserIdRef.current) {
+        queryClient.removeQueries({ queryKey: subjectQueryKeys.user(previousUserIdRef.current) });
+        queryClient.removeQueries({ queryKey: subjectQueryKeys.userArchived(previousUserIdRef.current) });
+        previousUserIdRef.current = null;
       }
 
       return () => {
@@ -132,12 +133,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     // Clear previous user's data when user changes
-    if (previousUserId && previousUserId !== userId) {
-      queryClient.invalidateQueries({ queryKey: subjectQueryKeys.user(previousUserId) });
-      queryClient.invalidateQueries({ queryKey: subjectQueryKeys.userArchived(previousUserId) });
+    if (previousUserIdRef.current && previousUserIdRef.current !== userId) {
+      queryClient.removeQueries({ queryKey: subjectQueryKeys.user(previousUserIdRef.current) });
+      queryClient.removeQueries({ queryKey: subjectQueryKeys.userArchived(previousUserIdRef.current) });
     }
 
-    setPreviousUserId(userId);
+    previousUserIdRef.current = userId;
     setProfileLoading(true);
     setProfileError(null);
 
@@ -170,7 +171,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       active = false;
     };
-  }, [session?.user.id, queryClient, previousUserId]);
+  }, [session?.user.id, queryClient]);
 
   const refreshProfile = useCallback(async (): Promise<Profile | null> => {
     const userId = session?.user.id;

@@ -17,9 +17,10 @@ import { SubjectsSyncErrorBanner } from '@/components/subjects/SubjectsSyncError
 import { useAuth } from '@/features/auth/useAuth';
 import { useAppState } from '@/hooks/useAppState';
 import { useResolvedSubjects } from '@/features/subjects/useResolvedSubjects';
+import { isMockAIAvailable } from '@/ai/aiClient';
 import { useReminders } from '@/hooks/useReminders';
 import { loadStreakData, recordActivity } from '@/lib/streak';
-import { NavigationFilters } from '@/types';
+import type { Bullet, NavigationFilters, PastPaper } from '@/types';
 import { StreakData } from '@/types/reminders';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -77,7 +78,7 @@ const Index = () => {
     clearSubjectData,
     checkDataIntegrity,
     repairAllDuplicates,
-  } = useAppState({ persistSubjects: profile !== null });
+  } = useAppState({ persistSubjects: false });
 
   // Resolve subjects from server with fallback to local
   const {
@@ -94,6 +95,7 @@ const Index = () => {
     ...localState,
     subjects: resolvedSubjects,
   }), [localState, resolvedSubjects]);
+  const aiFeaturesEnabled = isMockAIAvailable() && displayState.settings.aiFeaturesEnabled;
 
   const isLoading = isLocalLoading || isResolving;
 
@@ -182,7 +184,7 @@ const Index = () => {
   }, []);
 
   const handleUpdateBullet = useCallback(
-    (id: string, updates: Partial<typeof localState.bullets[0]>) => {
+    (id: string, updates: Partial<Bullet>) => {
       updateBullet(id, updates);
 
       if (updates.done || updates.status === 'Green') {
@@ -193,7 +195,7 @@ const Index = () => {
   );
 
   const handleUpdatePaper = useCallback(
-    (id: string, updates: Partial<typeof localState.pastPapers[0]>) => {
+    (id: string, updates: Partial<PastPaper>) => {
       updatePastPaper(id, updates);
 
       if (updates.completed) {
@@ -233,6 +235,14 @@ const Index = () => {
     }
   }, [currentView, navigate, subjectId]);
 
+  const handleRetrySync = useCallback(() => {
+    void queryClient.refetchQueries({ queryKey: ['subjects', 'user'] });
+  }, [queryClient]);
+
+  const handleSelectionComplete = useCallback(() => {
+    void queryClient.refetchQueries({ queryKey: ['subjects', 'user'] });
+  }, [queryClient]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -245,15 +255,6 @@ const Index = () => {
     !profileLoading &&
     profile !== null &&
     profile.onboarding_status !== 'completed';
-
-  const handleRetrySync = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['subjects', 'user'] });
-  }, [queryClient]);
-
-  const handleSelectionComplete = useCallback(() => {
-    // Invalidate user subjects query to refresh
-    queryClient.invalidateQueries({ queryKey: ['subjects', 'user'] });
-  }, [queryClient]);
 
   // Show subject selection gate only if:
   // - User is authenticated
@@ -289,7 +290,7 @@ const Index = () => {
             subjects={displayState.subjects}
             bullets={displayState.bullets}
             pastPapers={displayState.pastPapers}
-            aiFeaturesEnabled={displayState.settings.aiFeaturesEnabled}
+            aiFeaturesEnabled={aiFeaturesEnabled}
             onNavigate={handleNavigate}
             upcomingReminders={upcomingReminders}
             onDismissReminder={dismissReminder}
@@ -323,7 +324,7 @@ const Index = () => {
               bullets={displayState.bullets}
               pastPapers={displayState.pastPapers}
               allSubjects={displayState.subjects}
-              aiFeaturesEnabled={displayState.settings.aiFeaturesEnabled}
+              aiFeaturesEnabled={aiFeaturesEnabled}
               onUpdateBullet={handleUpdateBullet}
               onAddBullets={addBullets}
             />

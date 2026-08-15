@@ -25,13 +25,13 @@ export function SubjectsSyncErrorBanner({
       <AlertDescription className="mt-2">
         {hasGenuineFallback ? (
           <>
-            Showing your local subjects while we reconnect to the server.
-            Your data is safe and will sync when connection is restored.
+            Showing your saved local recovery subjects while we reconnect to the server.
+            Your local study data remains safe. Retry when the connection is available.
           </>
         ) : (
           <>
-            We couldn't load your subjects from the server. Please check your
-            internet connection and try again.
+            Unable to load your cloud subject selection. Your local study data remains safe.
+            Retry when the connection is available.
           </>
         )}
         {onRetry && (

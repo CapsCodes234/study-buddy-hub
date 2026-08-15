@@ -192,27 +192,19 @@ export async function findArchivedUserSubjectByCustomId(
 export async function fetchActiveSyllabusVersion(
   catalogueSubjectId: string
 ): Promise<SyllabusVersion | null> {
-  // First get the syllabus ID from the catalogue subject
-  const { data: catalogueData, error: catalogueError } = await supabase
-    .from('catalogue_subjects')
-    .select('id')
-    .eq('id', catalogueSubjectId)
-    .single();
-
-  if (catalogueError) {
-    throw new Error(`Failed to fetch catalogue subject: ${catalogueError.message}`);
-  }
-
-  // Then get the syllabus
+  // Get the active syllabus for this catalogue subject
   const { data: syllabusData, error: syllabusError } = await supabase
     .from('syllabuses')
     .select('id')
     .eq('catalogue_subject_id', catalogueSubjectId)
     .eq('is_active', true)
-    .single();
+    .maybeSingle();
 
   if (syllabusError) {
-    // No syllabus exists yet - this is allowed
+    throw new Error(`Failed to fetch syllabus: ${syllabusError.message}`);
+  }
+
+  if (!syllabusData) {
     return null;
   }
 
@@ -227,9 +219,6 @@ export async function fetchActiveSyllabusVersion(
     .maybeSingle();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
-    }
     throw new Error(`Failed to fetch syllabus version: ${error.message}`);
   }
 

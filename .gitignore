@@ -26,4 +26,5 @@ dist-ssr
 # Supabase
 supabase/.temp/
 supabase/.branches/
+supabase/snippets/
 .env.local

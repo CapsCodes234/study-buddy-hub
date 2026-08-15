@@ -7,7 +7,6 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import {
   createCatalogueUserSubject,
   createCustomSubject,
@@ -17,10 +16,10 @@ import {
   softDeleteCustomSubject,
   updateCustomSubject,
   findArchivedUserSubjectByCatalogueId,
-  findArchivedUserSubjectByCustomId,
   fetchActiveSyllabusVersion,
 } from './subjectsApi';
 import { subjectQueryKeys } from './queryKeys';
+import { createCustomSubjectSelection } from './customSubjectCreation';
 import type { Subject } from '@/types';
 
 /**
@@ -38,8 +37,11 @@ export function useSubjectMutations() {
    * Checks for archived row first, restores if found, otherwise creates new
    */
   const addCatalogueSubject = useMutation({
-    mutationFn: async (catalogueSubjectId: string) => {
+    mutationFn: async (input: string | { catalogueSubjectId: string; sortOrder?: number }) => {
       if (!userId) throw new Error('Authentication required');
+
+      const catalogueSubjectId = typeof input === 'string' ? input : input.catalogueSubjectId;
+      const sortOrder = typeof input === 'string' ? 0 : (input.sortOrder ?? 0);
 
       // Check for archived row first
       const archived = await findArchivedUserSubjectByCatalogueId(
@@ -48,7 +50,7 @@ export function useSubjectMutations() {
       );
 
       if (archived) {
-        // Restore existing archived row
+        // Restore existing archived row (preserves original stored sort_order)
         return await restoreUserSubject(archived.userSubject.id, archived.userSubject.version);
       }
 
@@ -58,7 +60,8 @@ export function useSubjectMutations() {
       // Create new user subject
       return await createCatalogueUserSubject(
         catalogueSubjectId,
-        syllabusVersion?.id || null
+        syllabusVersion?.id || null,
+        sortOrder
       );
     },
     onSuccess: () => {
@@ -80,45 +83,23 @@ export function useSubjectMutations() {
       code?: string;
       qualificationLabel?: string;
       description?: string;
+      sortOrder?: number;
     }) => {
       if (!userId) throw new Error('Authentication required');
 
-      let customSubjectId: string;
-
-      try {
-        // Step 1: Create custom definition
-        const customSubject = await createCustomSubject(
-          params.name,
-          params.code || null,
-          params.qualificationLabel || null,
-          params.description || null
-        );
-        customSubjectId = customSubject.id;
-
-        // Step 2: Create user subject
-        await createCustomUserSubject(customSubjectId);
-
-        return customSubject;
-      } catch (error) {
-        // Step 3: Rollback custom definition if user subject creation failed
-        if (customSubjectId) {
-          try {
-            // Fetch the custom subject to get its version
-            const { data: customData, error: fetchError } = await supabase
-              .from('custom_subjects')
-              .select('version')
-              .eq('id', customSubjectId)
-              .single();
-
-            if (!fetchError && customData) {
-              await softDeleteCustomSubject(customSubjectId, customData.version);
-            }
-          } catch (rollbackError) {
-            console.error('Failed to rollback custom subject:', rollbackError);
-          }
-        }
-        throw error;
-      }
+      return createCustomSubjectSelection(params, {
+        createDefinition: (input) => createCustomSubject(
+          input.name,
+          input.code || null,
+          input.qualificationLabel || null,
+          input.description || null,
+        ),
+        createSelection: createCustomUserSubject,
+        cleanupDefinition: softDeleteCustomSubject,
+        logCleanupError: (cleanupError) => {
+          console.error('Failed to rollback custom subject cleanup:', cleanupError);
+        },
+      });
     },
     onSuccess: () => {
       // Invalidate user subject queries

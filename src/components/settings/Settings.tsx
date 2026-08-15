@@ -8,17 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { exportAsJSON, importFromJSON, isImportSuccess } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/ui/ThemeProvider';
-import { testAIConnection, getProviderName, isAIConfigured } from '@/ai/aiClient';
+import { isMockAIAvailable } from '@/ai/aiClient';
 import { loadReminderSettings, saveReminderSettings } from '@/lib/examSchedule';
 import { DEFAULT_REMINDER_SETTINGS, ReminderSettings } from '@/types/syllabus';
 import { SubjectThemeSettings } from './SubjectThemeSettings';
@@ -38,9 +31,6 @@ import {
   Monitor,
   Palette,
   Bell,
-  CheckCircle2,
-  XCircle,
-  Loader2,
   Shield,
   AlertTriangle,
 } from 'lucide-react';
@@ -71,34 +61,9 @@ export const Settings = ({
   const [subjectClearModalOpen, setSubjectClearModalOpen] = useState(false);
   const [pendingSubjectClear, setPendingSubjectClear] = useState<{ id: string; name: string; topicCount: number; paperCount: number } | null>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
-  const [aiTestStatus, setAiTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-  const [aiTestMessage, setAiTestMessage] = useState('');
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings>(() => loadReminderSettings());
   const [integrityResult, setIntegrityResult] = useState<IntegrityCheckResult | null>(null);
   const [isCheckingIntegrity, setIsCheckingIntegrity] = useState(false);
-
-  const handleTestAIConnection = async () => {
-    setAiTestStatus('testing');
-    setAiTestMessage('');
-    try {
-      const result = await testAIConnection();
-      if (result.success) {
-        setAiTestStatus('success');
-        const msg = result.isMock ? 'Mock provider active' : 'Connection successful';
-        setAiTestMessage(msg);
-        toast({ title: 'AI Connection Successful', description: msg });
-      } else {
-        setAiTestStatus('error');
-        const msg = result.error || 'Connection failed';
-        setAiTestMessage(msg);
-        toast({ title: 'AI Connection Failed', description: msg, variant: 'destructive' });
-      }
-    } catch (error) {
-      setAiTestStatus('error');
-      setAiTestMessage('Unexpected error testing connection');
-      toast({ title: 'Error', description: 'Failed to test AI connection', variant: 'destructive' });
-    }
-  };
 
   const handleUpdateReminderSettings = (updates: Partial<ReminderSettings>) => {
     const updated = { ...reminderSettings, ...updates };
@@ -388,38 +353,38 @@ export const Settings = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-accent" />
-            AI Intelligence Features
+            AI Features
           </CardTitle>
           <CardDescription>
-            Enable AI-powered study insights and recommendations (optional, disabled by default)
+            Planned behind protected server-side infrastructure
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="ai-features-enabled">Enable AI Features</Label>
-              <p className="text-xs text-muted-foreground">
-                Study summaries, daily focus recommendations, and insights
-              </p>
+          {isMockAIAvailable() && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="ai-features-enabled">Enable development mock</Label>
+                <p className="text-xs text-muted-foreground">
+                  Local sample summaries and recommendations only
+                </p>
+              </div>
+              <Switch
+                id="ai-features-enabled"
+                checked={state.settings.aiFeaturesEnabled}
+                onCheckedChange={(checked) =>
+                  onUpdateSettings({ aiFeaturesEnabled: checked })
+                }
+              />
             </div>
-            <Switch
-              id="ai-features-enabled"
-              checked={state.settings.aiFeaturesEnabled}
-              onCheckedChange={(checked) =>
-                onUpdateSettings({ aiFeaturesEnabled: checked })
-              }
-            />
-          </div>
+          )}
           
           <div className="p-3 bg-muted/50 rounded-lg flex gap-3">
             <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
             <div className="text-xs text-muted-foreground space-y-1">
               <p>
-                AI features are <strong>advisory only</strong> and never modify your data.
-              </p>
-              <p>
-                To use AI features, set <code className="font-mono bg-muted px-1 rounded">VITE_AI_API_KEY</code> in your environment.
-                See the README for setup instructions.
+                Real AI is disabled. Provider credentials must never be placed in browser-visible
+                <code className="mx-1 rounded bg-muted px-1 font-mono">VITE_*</code>
+                variables. Secure AI remains deferred to a later server-side phase.
               </p>
             </div>
           </div>
@@ -434,84 +399,33 @@ export const Settings = ({
             AI Extraction
           </CardTitle>
           <CardDescription>
-            Enable AI-powered syllabus extraction from PDF files
+            Planned secure PDF syllabus extraction
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="ai-enabled">Enable AI Extraction</Label>
-              <p className="text-xs text-muted-foreground">
-                {isAIConfigured()
-                  ? `Ready to use (${getProviderName()})`
-                  : 'Requires API key configuration (see README)'}
-              </p>
+          {isMockAIAvailable() && (
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="ai-enabled">Enable development extraction mock</Label>
+                <p className="text-xs text-muted-foreground">Uses sample data and no provider credentials</p>
+              </div>
+              <Switch
+                id="ai-enabled"
+                checked={state.settings.aiExtractionEnabled}
+                onCheckedChange={(checked) =>
+                  onUpdateSettings({ aiExtractionEnabled: checked })
+                }
+              />
             </div>
-            <Switch
-              id="ai-enabled"
-              checked={state.settings.aiExtractionEnabled}
-              onCheckedChange={(checked) =>
-                onUpdateSettings({ aiExtractionEnabled: checked })
-              }
-            />
-          </div>
-
-          {/* Provider Selection */}
-          <div className="space-y-1.5">
-            <Label>AI Provider</Label>
-            <Select
-              value={import.meta.env.VITE_AI_PROVIDER || 'openrouter'}
-              disabled
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openrouter">OpenRouter (default)</SelectItem>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="mock">Mock (for development)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Set via VITE_AI_PROVIDER in .env.local
-            </p>
-          </div>
-
-          {/* Test Connection Button */}
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestAIConnection}
-              disabled={aiTestStatus === 'testing'}
-            >
-              {aiTestStatus === 'testing' && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {aiTestStatus === 'success' && <CheckCircle2 className="h-4 w-4 mr-1 text-green-600" />}
-              {aiTestStatus === 'error' && <XCircle className="h-4 w-4 mr-1 text-destructive" />}
-              Test AI Connection
-            </Button>
-            {aiTestMessage && (
-              <span className={`text-xs ${aiTestStatus === 'success' ? 'text-green-600' : 'text-destructive'}`}>
-                {aiTestMessage}
-              </span>
-            )}
-          </div>
+          )}
           
-          <div className={`p-3 rounded-lg flex gap-3 ${isAIConfigured() ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
-            <Info className={`h-4 w-4 shrink-0 mt-0.5 ${isAIConfigured() ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
-            <div className={`text-xs ${isAIConfigured() ? 'text-green-700 dark:text-green-300' : 'text-muted-foreground'}`}>
-              {isAIConfigured() ? (
-                <p>API key is configured. You can enable AI extraction above.</p>
-              ) : (
-                <>
-                  <p className="mb-1">To enable AI extraction:</p>
-                  <ol className="list-decimal list-inside space-y-0.5">
-                    <li>Create <code className="bg-muted px-1 rounded">.env.local</code></li>
-                    <li>Add <code className="bg-muted px-1 rounded">VITE_AI_API_KEY=your_key</code></li>
-                    <li>Set <code className="bg-muted px-1 rounded">VITE_AI_PROVIDER=openrouter</code></li>
-                  </ol>
-                </>
-              )}
+          <div className="p-3 rounded-lg flex gap-3 bg-muted/50 border border-border/50">
+            <Info className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+            <div className="text-xs text-muted-foreground">
+              <p>
+                Real AI provider integration is deferred until secure server-side infrastructure is implemented.
+                Mock AI capabilities are available for local development and testing.
+              </p>
             </div>
           </div>
         </CardContent>

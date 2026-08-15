@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { saveData, loadData, getInitialState } from '../storage';
+import { saveData, loadData, getInitialState, getPersistedSubjectsSnapshot } from '../storage';
 import type { AppState, Subject } from '@/types';
 
 describe('saveData persistence behavior', () => {
@@ -179,5 +179,64 @@ describe('saveData persistence behavior', () => {
 
     const loaded = loadData();
     expect(loaded.subjects).toHaveLength(0);
+  });
+});
+
+describe('getPersistedSubjectsSnapshot', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('returns no_storage when localStorage has no entry', () => {
+    const result = getPersistedSubjectsSnapshot();
+    expect(result).toEqual({ type: 'no_storage' });
+  });
+
+  it('returns explicit_empty when subjects array is explicitly empty', () => {
+    localStorage.setItem('study-tracker-data', JSON.stringify({ subjects: [], bullets: [] }));
+    const result = getPersistedSubjectsSnapshot();
+    expect(result).toEqual({ type: 'explicit_empty', subjects: [] });
+  });
+
+  it('returns no_storage when stored AppState has no subjects property', () => {
+    localStorage.setItem('study-tracker-data', JSON.stringify({ bullets: [] }));
+    expect(getPersistedSubjectsSnapshot()).toEqual({ type: 'no_storage' });
+  });
+
+  it('returns genuine_snapshot when valid non-empty subjects exist', () => {
+    const validSubjects: Subject[] = [
+      { id: 'math', name: 'Mathematics', color: 'blue' },
+    ];
+    localStorage.setItem('study-tracker-data', JSON.stringify({ subjects: validSubjects }));
+    const result = getPersistedSubjectsSnapshot();
+    expect(result.type).toBe('genuine_snapshot');
+    if (result.type === 'genuine_snapshot') {
+      expect(result.subjects).toEqual(validSubjects);
+    }
+  });
+
+  it('returns malformed when subjects contains invalid object', () => {
+    localStorage.setItem('study-tracker-data', JSON.stringify({ subjects: [{ invalid: 'data' }] }));
+    const result = getPersistedSubjectsSnapshot();
+    expect(result.type).toBe('malformed');
+  });
+
+  it('returns malformed when a subject has invalid optional metadata', () => {
+    localStorage.setItem(
+      'study-tracker-data',
+      JSON.stringify({
+        subjects: [{ id: 'math', name: 'Mathematics', color: 'blue', sortOrder: 'first' }],
+      }),
+    );
+    expect(getPersistedSubjectsSnapshot().type).toBe('malformed');
+  });
+
+  it('does not mutate localStorage while checking snapshot authenticity', () => {
+    const stored = JSON.stringify({ subjects: [{ id: 'math', name: 'Mathematics', color: 'blue' }] });
+    localStorage.setItem('study-tracker-data', stored);
+
+    getPersistedSubjectsSnapshot();
+
+    expect(localStorage.getItem('study-tracker-data')).toBe(stored);
   });
 });

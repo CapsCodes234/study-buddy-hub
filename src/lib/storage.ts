@@ -13,7 +13,14 @@
  */
 
 import { AppState, Bullet, PastPaper, Subject, AppSettings } from '@/types';
-import { safeJSONParse, sanitizeText, sanitizeCSVCell, validateCSVBullet, appStateSchema } from '@/lib/validation';
+import {
+  safeJSONParse,
+  sanitizeText,
+  sanitizeCSVCell,
+  validateCSVBullet,
+  appStateSchema,
+  subjectSchema,
+} from '@/lib/validation';
 import { deduplicateBullets, deduplicatePastPapers, deduplicateComponents, loadAndDedupeComponents } from '@/lib/dataIntegrity';
 import { Component } from '@/types/components';
 import { SubjectComponent, ExtractionChangelog } from '@/types/syllabus';
@@ -52,6 +59,49 @@ export const getInitialState = (): AppState => ({
   pastPapers: [],
   settings: DEFAULT_SETTINGS,
 });
+
+export type PersistedSubjectsSnapshotResult =
+  | { type: 'no_storage' }
+  | { type: 'explicit_empty'; subjects: [] }
+  | { type: 'genuine_snapshot'; subjects: Subject[] }
+  | { type: 'malformed'; error?: string };
+
+/**
+ * Safely inspect stored AppState to distinguish genuine legacy subjects snapshot from
+ * default synthesized state or missing/malformed state.
+ * Does NOT mutate localStorage.
+ */
+export const getPersistedSubjectsSnapshot = (): PersistedSubjectsSnapshotResult => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return { type: 'no_storage' };
+    }
+    const parsed = safeJSONParse<Record<string, unknown>>(stored);
+    if (!parsed || typeof parsed !== 'object') {
+      return { type: 'malformed', error: 'Invalid JSON structure' };
+    }
+    if (!('subjects' in parsed)) {
+      return { type: 'no_storage' };
+    }
+    const rawSubjects = parsed.subjects;
+    if (!Array.isArray(rawSubjects)) {
+      return { type: 'malformed', error: 'subjects property is not an array' };
+    }
+    if (rawSubjects.length === 0) {
+      return { type: 'explicit_empty', subjects: [] };
+    }
+
+    const validation = subjectSchema.array().safeParse(rawSubjects);
+    if (!validation.success) {
+      return { type: 'malformed', error: validation.error.message };
+    }
+
+    return { type: 'genuine_snapshot', subjects: validation.data as Subject[] };
+  } catch (err) {
+    return { type: 'malformed', error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+};
 
 // Load data from localStorage with safe JSON parsing
 export const loadData = (): AppState => {
@@ -111,32 +161,16 @@ export const saveData = (
     } else {
       // For authenticated/server-backed sessions:
       // 1. Read existing persisted state
-      const existing = localStorage.getItem(STORAGE_KEY);
-      if (existing) {
-        try {
-          const parsed = safeJSONParse<Record<string, unknown>>(existing);
-          if (parsed && typeof parsed === 'object') {
-            // 2. Preserve the genuine legacy subjects array
-            const legacySubjects = Array.isArray(parsed.subjects) ? parsed.subjects as Subject[] : [];
+      const snapshot = getPersistedSubjectsSnapshot();
+      const preservedSubjects = snapshot.type === 'genuine_snapshot'
+        ? snapshot.subjects
+        : [];
 
-            // 3. Persist the newest bullets, past papers, and settings with preserved subjects
-            const toSave = {
-              ...state,
-              subjects: legacySubjects,
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-            return;
-          }
-        } catch (e) {
-          console.warn('Failed to preserve legacy subjects during save:', e);
-        }
-      }
-
-      // No genuine legacy snapshot exists (missing, malformed, or empty)
-      // Preserve empty subjects array while saving other state
+      // Preserve only a validated legacy snapshot. Explicit empty, missing, and
+      // malformed subject data all remain empty while other local data is saved.
       const toSave = {
         ...state,
-        subjects: [],
+        subjects: preservedSubjects,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     }

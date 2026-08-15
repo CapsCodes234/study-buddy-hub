@@ -9,7 +9,7 @@
 import { useMemo } from 'react';
 import { useUserSubjects } from './useUserSubjects';
 import { mapUserSubjectsToSubjects } from '@/lib/subjects/mapUserSubjects';
-import { hasGenuineLegacyData } from '@/lib/subjects/legacySubjectUsage';
+import { getPersistedSubjectsSnapshot } from '@/lib/storage';
 import type { Subject, AppState } from '@/types';
 
 /**
@@ -71,12 +71,12 @@ export function useResolvedSubjects(localState: AppState) {
     }
 
     // Case 3: Failed fetch
-    const hasGenuineData = hasGenuineLegacyData(localState.bullets, localState.pastPapers);
+    const snapshot = getPersistedSubjectsSnapshot();
 
-    if (hasGenuineData) {
-      // Has genuine legacy data: show as fallback with sync error
+    if (snapshot.type === 'genuine_snapshot') {
+      // Has genuine legacy snapshot: show as fallback with sync error
       return {
-        resolvedSubjects: localState.subjects,
+        resolvedSubjects: snapshot.subjects,
         isLoading: false,
         isError: true,
         error: error || new Error('Failed to fetch subjects'),
@@ -96,7 +96,7 @@ export function useResolvedSubjects(localState: AppState) {
       shouldShowSyncError: true,
       hasGenuineFallback: false,
     };
-  }, [userSubjects, isLoading, error, isError, localState]);
+  }, [userSubjects, isLoading, error, isError, localState.subjects]);
 
   return result;
 }

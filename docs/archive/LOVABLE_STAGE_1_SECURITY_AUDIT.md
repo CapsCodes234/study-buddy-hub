@@ -1,5 +1,7 @@
 # Stage 1 Security Audit — Study Buddy Hub
 
+> Historical archive: this describes the pre-Supabase, pre-stabilization repository and is not current implementation guidance.
+
 Read-only review. No code was modified. App is a client-only React/Vite PWA with `localStorage` persistence and optional direct-from-browser calls to an OpenAI-compatible AI provider. There is **no backend, no auth, no database** in the repo.
 
 ---
@@ -7,7 +9,7 @@ Read-only review. No code was modified. App is a client-only React/Vite PWA with
 ## 1. Client-side API keys & env vars
 
 **Finding:** AI provider API key is read from `import.meta.env.VITE_AI_API_KEY` and used directly from the browser.
-**Evidence:** `src/ai/aiClient.ts:276, 313`; `src/ai/summarizer.ts:61,126`; `SECURITY_NOTES.md`.
+**Historical evidence:** `src/ai/aiClient.ts:276, 313`; `src/ai/summarizer.ts:61,126`; current notes are at `docs/security/SECURITY_NOTES.md`.
 **Severity:** Low (personal) / **Critical** (multi-user).
 **Status:** Confirmed.
 **Current impact:** User's own key in their own browser — acceptable local-first use. Any `VITE_*` var is bundled into the shipped JS and visible to anyone loading the site.
@@ -84,7 +86,7 @@ Read-only review. No code was modified. App is a client-only React/Vite PWA with
 ## 6. JSON import / export & backup restore
 
 **Finding a — Backup file is plaintext JSON containing full study history.**
-**Evidence:** `src/lib/storage.ts` `exportAsJSON`/`importFromJSON`; `SECURITY_NOTES.md` v3 schema.
+**Historical evidence:** `src/lib/storage.ts` `exportAsJSON`/`importFromJSON`; the then-current security notes are now superseded by `docs/security/SECURITY_NOTES.md`.
 **Severity:** Low (personal) / Medium (multi-user).
 **Status:** Confirmed.
 **Impact:** If shared or synced via cloud, contents are readable. Web Share API path may hand the file to arbitrary third-party apps.
@@ -143,7 +145,7 @@ Read-only review. No code was modified. App is a client-only React/Vite PWA with
 
 ## 11. Dependencies & packages
 
-**Finding:** 55 runtime + 18 dev deps (per `package.json`). Includes `pdfjs-dist`, AI SDK, Radix, Zod, etc. `SECURITY_NOTES.md` recommends periodic `npm audit` but no CI evidence in-repo.
+**Historical finding:** 55 runtime + 18 dev deps (per the package file at the time). Current dependency policy is documented in `docs/security/SECURITY_NOTES.md`.
 **Severity:** Medium.
 **Status:** Cannot be verified without running `npm audit` / `code--dependency_scan`.
 **Action:** Run `code--dependency_scan` in a follow-up stage; add Dependabot/renovate + `npm audit --audit-level=high` in CI. Pin `pdfjs-dist` and lock its worker version.
@@ -152,7 +154,7 @@ Read-only review. No code was modified. App is a client-only React/Vite PWA with
 
 ## 12. Rate limiting & AI cost abuse
 
-**Finding:** No client-side throttling, no per-user quotas, no request counting. `SECURITY_NOTES.md` notes it as a "Low priority" enhancement.
+**Historical finding:** No client-side throttling, no per-user quotas, and no request counting existed at the time of this audit.
 **Severity:** Low (personal, user's own key) / **Critical** (multi-user or shared key).
 **Status:** Confirmed.
 **Impact:** A stuck retry loop or malicious page interaction could burn through credits.
