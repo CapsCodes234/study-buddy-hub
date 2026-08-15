@@ -345,18 +345,16 @@ GitHub Actions should run database tests on pull requests before migrations are 
 
 ---
 
-## 14. Lovable Integration
+## 14. Frontend Integration
 
-Lovable should not be the first environment used to validate the database SQL.
-
-Connect Lovable only after:
+The React/Vite application and Vercel preview workflow should be connected only after:
 
 - the remote development project has the validated migrations;
 - Auth and RLS have been tested;
 - local application queries work;
 - development environment variables are ready.
 
-Lovable must connect to the development project, not a future production project.
+Preview deployments must use the development project, not a future production project.
 
 ---
 
@@ -394,7 +392,7 @@ Recommended cards:
 18. Dry-run remote migration push
 19. Push to remote development project
 20. Connect frontend to development Supabase
-21. Connect Lovable to development Supabase
+21. Validate the Vercel preview against development Supabase
 22. Add GitHub database-test workflow
 
 Each card should contain:

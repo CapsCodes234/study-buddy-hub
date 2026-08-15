@@ -1,8 +1,69 @@
 # Study Buddy Hub — Subject Selection Implementation Handoff
 
-**Status:** Approved plan only — implementation has **not** started  
-**Branch:** `feat/supabase-database-foundation`  
-**Purpose:** Persistent handoff for Cursor/other coding agents to resume the authenticated subject-selection checkpoint safely.
+**Status:** Implementation, local acceptance, and hosted development validation complete; **MERGE CLEARED**
+
+**Branch:** `feat/subject-selection-foundation`
+**Purpose:** Persistent handoff documenting the completed authenticated subject-selection checkpoint, final hosted-development validation, merge clearance, and deferred follow-up work.
+
+## Implementation Fixes Applied
+
+The following fixes were applied to the initial implementation to address critical issues:
+
+1. **Authenticated Subject Persistence**: `Index.tsx` starts authenticated application operation with `{ persistSubjects: false }`. Local bullets, papers, and settings continue saving, while the local subject array remains a frozen compatibility/recovery snapshot.
+
+2. **No-Snapshot Persistence**: Fixed `saveData` in `storage.ts` to preserve empty subjects array when no genuine legacy snapshot exists, avoiding fallback to DEFAULT_SUBJECTS.
+
+3. **Null Filters**: Replaced all `.eq('deleted_at', null)` with `.is('deleted_at', null)` in Supabase queries in `subjectsApi.ts` for correct null filtering.
+
+4. **Legacy Pre-Selection ID Mapping**: Updated `SubjectSelectionGate` to map catalogue rows through `catalogueSlugToUiId` for correct legacy UI ID mapping.
+
+5. **Onboarding Order**: Restored correct gating in `Index.tsx` to show subject selection gate only after onboarding is completed.
+
+6. **Subject Management Integration**: Integrated `SubjectManageSection` into `Settings.tsx` with full add/remove/archive/restore functionality.
+
+7. **Add-Subject UX**: Enhanced `SubjectManageSection` to prevent duplicates, count toward max seven active subjects, and disable already active options.
+
+8. **Syllabus Version Status**: Fixed syllabus version query to use `status = 'active'` instead of `'published'` to match actual schema.
+
+9. **Catalogue Query Errors**: Added distinct error handling in `SubjectSelectionGate` and `useCatalogueSubjects` to show retry UI on failure.
+
+10. **Catalogue Picker Consolidation**: Removed duplicate `CatalogueSubjectPicker.tsx` component; consolidated into `SubjectManageSection`.
+
+11. **Query Cache Lifecycle**: Old-user active and archived subject queries are removed on logout/account change. The shared catalogue cache is retained and previous-user data is never used as placeholder data.
+
+12. **Legacy Error Fallback**: Fixed `loadData` in `storage.ts` to distinguish between missing subjects key (use DEFAULT_SUBJECTS) and explicitly empty subjects array (preserve []).
+
+13. **Legacy Color Preservation**: Added `LEGACY_COLORS` map in `catalogueUiIds.ts` to preserve original colors for math, physics, it.
+
+14. **Test Coverage**: Persistence tests cover no storage, explicit empty, genuine validated snapshot, and malformed subject data. The selection-gate test covers asynchronous catalogue arrival and one-time legacy preselection.
+
+15. **Catalogue and custom workflows**: Official subjects come from `public.catalogue_subjects`; custom subjects use a separate explicit form. Existing active catalogue subjects are excluded, the seven-subject maximum is enforced in UI and database, and later additions append after the highest active `sort_order`.
+
+16. **Partial initial creation**: Initial catalogue selections are created sequentially in catalogue order with incremental sort values. Successful rows are retained, processing stops on the first failure, and authoritative user subjects are refetched before leaving the gate.
+
+17. **Custom cleanup boundary**: If selecting a newly inserted custom definition fails, only that operation's exact custom-subject ID/version is eligible for best-effort soft-delete. Cleanup errors are logged separately and the original failure remains user-facing.
+
+18. **Optional syllabus version**: A successful lookup with no active syllabus/version returns `null`; query failures throw. Catalogue selection remains allowed without a version where the existing RPC permits it.
+
+19. **Validation status**: Automated frontend validation, the production build, local Supabase database lint and pgTAP tests, and real local Supabase integration passed. The user (not Codex) performed browser acceptance covering the new-account flow, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behavior. Hosted development validation is complete as recorded below. Production deployment, GitHub Actions hosted execution, production AI, full study-data cloud migration, multi-board support, and offline conflict resolution remain unverified or intentionally deferred.
+
+## Final Hosted Validation and Merge Clearance
+
+| Check | Final result |
+| --- | --- |
+| Hosted Supabase migrations | 17/17 aligned |
+| Hosted catalogue seed | PASS |
+| Vercel Preview | PASS |
+| SPA fallback | PASS |
+| QA User A | PASS |
+| QA User B | PASS |
+| Cross-user isolation | PASS |
+| Email confirmation | PASS |
+| Cross-device confirmation UX | Non-blocking follow-up |
+| `npm audit` current | 0 vulnerabilities |
+| Final merge clearance | **MERGE CLEARED** |
+
+The cross-device confirmation behavior does not block the merge and remains a follow-up UX improvement.
 
 ---
 
@@ -28,14 +89,21 @@ The following foundation is already complete and tested:
 - Account menu using database profile data.
 - Cross-browser onboarding persistence.
 - TypeScript and production build validation passed for the completed checkpoints.
+- Authenticated `user_subjects` authority with a zero-subject selection gate, catalogue and custom-subject workflows, archive/restore, the seven-active-subject limit, deterministic ordering, asynchronous legacy preselection, and account-specific query-cache cleanup.
+- Local legacy subject snapshots and remaining local study data are preserved, while backup/export uses the current resolved server-backed subject selection.
 
 Do not redo completed foundation work unless inspection demonstrates a defect.
 
+> The sections below preserve the architecture contract and implementation requirements
+> that guided this checkpoint. Imperative or future-tense wording should be read as the
+> requirements against which the completed implementation was designed and validated,
+> not as evidence that the work is still pending.
+
 ---
 
-# 2. Subject-Selection Goal
+# 2. Architecture Contract Used for Implementation
 
-Implement **only the authenticated subject-selection foundation**.
+The checkpoint scope was **only the authenticated subject-selection foundation**.
 
 The long-term architecture is:
 
@@ -115,7 +183,7 @@ Routes currently include:
 
 Supabase UUIDs must therefore **not** replace these UI IDs during this checkpoint.
 
-TanStack Query is already installed and its provider exists, but subject hooks do not yet use it.
+TanStack Query is installed and is used by the authenticated subject-query and mutation layer, with user-scoped query keys and account-change cache cleanup.
 
 ---
 
@@ -252,7 +320,7 @@ export interface Subject {
 }
 ```
 
-Confirm exact fields against generated Supabase types during implementation.
+The implemented fields were confirmed against the generated Supabase types.
 
 Extend the validation schema with matching optional properties so imports/backups remain compatible.
 
@@ -327,7 +395,7 @@ subjects: []
 
 rather than persisting the in-memory `DEFAULT_SUBJECTS`.
 
-Add tests for this behaviour.
+Automated persistence tests cover this behaviour.
 
 ---
 
@@ -649,7 +717,7 @@ On logout/user change:
 - remove user-specific subject queries;
 - retain shared catalogue cache.
 
-Prefer feature-level cache lifecycle over coupling QueryClient into `AuthProvider`.
+The completed implementation coordinates account-change cleanup in `AuthProvider` through QueryClient while retaining feature-owned subject query keys.
 
 ---
 
@@ -711,7 +779,7 @@ Only use that exact concept when a genuine local snapshot actually exists.
 
 Raw `useAppState().state.subjects` may remain a stale compatibility snapshot.
 
-Current authenticated UI/export should instead use a derived state:
+Current authenticated UI/export uses a derived state:
 
 ```typescript
 const displayState: AppState = {
@@ -754,13 +822,13 @@ Known dependencies include:
 - default component seeding
 - architecture documentation
 
-Long term, Supabase subject selection will replace these defaults as the authoritative subject source.
+For authenticated users, Supabase subject selection is now the authoritative subject source; the defaults remain transitional compatibility behaviour.
 
-This checkpoint should **decouple the application from the defaults before deleting them**.
+This checkpoint **decoupled authenticated subject authority from the defaults without deleting them**. Their eventual removal remains a separate migration checkpoint.
 
 ---
 
-# 24. Recommended Files to Create
+# 24. Original File-Creation Plan
 
 ```text
 src/lib/subjects/catalogueUiIds.ts
@@ -787,11 +855,11 @@ src/lib/subjects/__tests__/legacySubjectUsage.test.ts
 docs/architecture/SUBJECT_SELECTION.md
 ```
 
-Exact file breakdown may be adjusted during implementation if a simpler structure preserves the approved architecture.
+The completed implementation adjusted this original breakdown where a simpler structure preserved the approved architecture, including consolidating the catalogue picker into `SubjectManageSection`.
 
 ---
 
-# 25. Recommended Files to Modify
+# 25. Original File-Modification Plan
 
 ```text
 src/types/index.ts
@@ -824,7 +892,7 @@ Also document:
 
 ---
 
-# 27. Tests to Add
+# 27. Test Coverage Contract
 
 ## Catalogue UI ID tests
 
@@ -875,9 +943,9 @@ Verify:
 
 ---
 
-# 28. Required Validation After Implementation
+# 28. Completed Local Validation
 
-Run:
+The following validation completed successfully:
 
 ```powershell
 npx.cmd tsc --noEmit
@@ -886,7 +954,7 @@ npx.cmd supabase db lint
 npx.cmd supabase test db
 ```
 
-Also run the relevant frontend/Vitest test command used by the repository.
+The relevant frontend/Vitest suite also passed.
 
 Do not reset the database merely to perform implementation unless genuinely required.
 
@@ -894,9 +962,9 @@ Do not delete Docker volumes.
 
 ---
 
-# 29. Manual Verification Checklist
+# 29. User-Performed Browser Acceptance Record
 
-After automated checks pass, manually verify:
+After automated checks passed, the user—not Codex—performed the real browser acceptance rounds. The user-verified coverage included new-account and onboarding order, authenticated subject authority, refresh and fresh-browser persistence, subject management, archive/restore, custom subjects, the seven-subject limit, cross-account isolation, local-data preservation, backup/export, AI safety UX, and general regression behaviour. The detailed checklist below preserves the acceptance requirements; automated tests cover failure-path behaviour where appropriate.
 
 1. Existing `/math`, `/physics`, `/it` route behaviour remains stable when those subjects are selected.
 2. Existing local bullets remain intact.
@@ -960,9 +1028,22 @@ A separate future checkpoint will populate the full official Cambridge subject l
 
 Future boards/qualifications should be addable largely through catalogue data rather than rewriting subject-selection UI.
 
+The current future-subject UI ID fallback uses the catalogue slug. Before multiple
+boards or qualifications are enabled, subject identity must be revisited so two
+catalogue rows with the same slug cannot collide in routes or legacy study-data
+references. That concern is deliberately deferred; the current checkpoint targets
+Cambridge International AS & A Level only.
+
+`DEFAULT_SUBJECTS` also remains a transitional compatibility dependency in
+`storage.ts`, initial-state/bootstrap behavior, import fallback, syllabus storage,
+and default component seeding. Authenticated subject authority is decoupled from
+those defaults, but deleting them requires a separate migration checkpoint.
+
 ---
 
-# 32. Resume Instructions for Cursor Agent
+# 32. Historical Implementation Resume Instructions
+
+The following instructions are retained as checkpoint provenance and are not current implementation TODOs.
 
 When resuming this work:
 
@@ -976,7 +1057,7 @@ git status
 Expected branch:
 
 ```text
-feat/supabase-database-foundation
+feat/subject-selection-foundation
 ```
 
 2. Read this entire document before editing.
@@ -1008,6 +1089,4 @@ feat/supabase-database-foundation
 
 ## Implementation Authorization
 
-This document represents the approved architecture for the subject-selection checkpoint.
-
-Cursor may proceed with implementation when explicitly instructed by the user, subject to the constraints above.
+This document records the approved architecture for the subject-selection checkpoint. Implementation, local acceptance, and hosted development validation are complete, and the checkpoint is **MERGE CLEARED**. Only the explicitly deferred production/future work and the non-blocking cross-device confirmation UX follow-up remain.

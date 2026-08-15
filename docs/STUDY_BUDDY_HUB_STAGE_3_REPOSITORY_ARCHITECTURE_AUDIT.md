@@ -6,6 +6,12 @@
 **Authoritative Product Scope Source of Truth:** `docs/STUDY_BUDDY_HUB_STAGE_2_REQUIREMENTS_SCOPE.md`  
 **Prior Plan Reference:** `docs/STUDY_BUDDY_HUB_REVIVAL_PLAN.md`  
 
+> **Stabilization note (2026-08-07):** This document records the pre-stabilization
+> audit baseline. The current working branch removes the browser-side AI secret and
+> direct provider transport described below; production AI remains deferred until a
+> secure server-side transport is implemented. See `README.md` and
+> `docs/security/SECURITY_NOTES.md` for the current boundary.
+
 ---
 
 ## 1. Executive Verdict

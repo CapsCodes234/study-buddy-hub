@@ -28,7 +28,7 @@ import {
 import { Subject } from '@/types';
 import { ExtractionResult, ComponentMarksSuggestion } from '@/types/syllabus';
 import { extractTextFromPDF } from '@/lib/pdfExtractor';
-import { extractSyllabusFromPDF, isAIConfigured, getProviderName } from '@/ai/aiClient';
+import { extractSyllabusFromPDF, isAIConfigured } from '@/ai/aiClient';
 import { extractComponentMarks } from '@/lib/extraction/parseHelpers';
 import { ExtractionReviewModal } from './ExtractionReviewModal';
 import { cn } from '@/lib/utils';
@@ -240,9 +240,9 @@ export const SyllabusUpload = ({
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>AI Extraction Disabled</AlertTitle>
               <AlertDescription>
-                {!aiEnabled
-                  ? 'Enable AI extraction in Settings to automatically extract syllabus from PDFs.'
-                  : `Configure your ${getProviderName()} API key in Settings to enable AI extraction.`}
+                {import.meta.env.DEV
+                  ? 'Enable the local mock in Settings for development-only extraction samples.'
+                  : 'Real AI extraction is deferred until protected server-side infrastructure is available.'}
               </AlertDescription>
             </Alert>
           ) : (

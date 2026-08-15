@@ -98,7 +98,7 @@ export const ImportDialog = ({
 
       const aiProvider = getAIProvider();
       if (!aiProvider) {
-        throw new Error('AI provider not available. Please check your API key configuration.');
+        throw new Error('AI extraction is deferred until protected server-side infrastructure is available.');
       }
 
       const availableSubjects = subjects.map(s => s.name);
@@ -140,7 +140,7 @@ export const ImportDialog = ({
     } finally {
       setIsExtractingPDF(false);
     }
-  }, [subjects, convertExtractedSyllabusToBullets, onImport, toast]);
+  }, [subjects, convertExtractedSyllabusToBullets, onImport, onOpenChange, toast]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -8,14 +8,14 @@ import { ComponentMarksSuggestion, ExtractedComponent } from '@/types/syllabus';
  * Common patterns for detecting component/paper marks in syllabus text
  */
 const MARKS_PATTERNS = [
-  // "Paper 1 - 40 marks" or "Paper 1: 40 marks"
-  /paper\s*(\d+)\s*[-:–]\s*(\d+)\s*marks?/gi,
+  // "Paper 1 - 40 marks" or "Paper 1: 40 marks" or "Paper 1 — 40 marks"
+  /paper\s*(\d+)\s*(?:-|:|\u2013|\u2014)\s*(\d+)\s*marks?/gi,
   // "Paper 1 (40 marks)" 
   /paper\s*(\d+)\s*\((\d+)\s*marks?\)/gi,
   // "Component 1: 40 marks"
-  /component\s*(\d+)\s*[-:–]\s*(\d+)\s*marks?/gi,
+  /component\s*(\d+)\s*(?:-|:|\u2013|\u2014)\s*(\d+)\s*marks?/gi,
   // "Written Paper — 80 marks"
-  /(written\s*paper|practical|theory|coursework)\s*[-:–—]\s*(\d+)\s*marks?/gi,
+  /(written\s*paper|practical|theory|coursework)\s*(?:-|:|\u2013|\u2014)\s*(\d+)\s*marks?/gi,
   // Table-like: "| Paper 1 | 40 |"
   /\|\s*(paper\s*\d+|component\s*\d+)\s*\|\s*(\d+)\s*\|/gi,
   // "Paper 1 worth 40 marks"
@@ -121,6 +121,17 @@ function calculatePatternConfidence(
 }
 
 /**
+ * Common syllabus action verbs for detecting bullet points
+ */
+const SYLLABUS_ACTION_VERBS = new Set([
+  'describe', 'explain', 'calculate', 'state', 'define', 'identify',
+  'determine', 'outline', 'discuss', 'evaluate', 'compare', 'show',
+  'sketch', 'predict', 'suggest', 'contrast', 'derive', 'draw',
+  'analyse', 'analyze', 'list', 'estimate', 'understand', 'apply',
+  'recall', 'demonstrate', 'use', 'select', 'formulate'
+]);
+
+/**
  * Parse topic numbering from text
  * Handles formats like "1.0", "1.1", "1.1.1", "A.", "A.1", etc.
  */
@@ -129,25 +140,58 @@ export function parseTopicNumbering(text: string): {
   cleanText: string;
   level: number;
 } {
-  // Common numbering patterns
-  const patterns = [
-    /^(\d+(?:\.\d+)*)\s*[-.:)]\s*/,  // 1.0, 1.1, 1.1.1
-    /^([A-Z](?:\.\d+)*)\s*[-.:)]\s*/i,  // A, A.1, A.1.1
-    /^\(([a-z]+)\)\s*/i,  // (a), (b)
-    /^([ivxlcdm]+)\s*[-.:)]\s*/i,  // i, ii, iii (roman)
-  ];
+  const trimmed = text.trim();
   
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const number = match[1];
-      const cleanText = text.slice(match[0].length).trim();
-      const level = (number.match(/\./g) || []).length + 1;
-      return { number, cleanText, level };
-    }
+  // Match full dot notation sequence first (e.g., 2.1, 1.1.1)
+  const dotSeqMatch = trimmed.match(/^(\d+(?:\.\d+)+)\s*[-.:)]?\s*/);
+  if (dotSeqMatch) {
+    const number = dotSeqMatch[1];
+    const cleanText = trimmed.slice(dotSeqMatch[0].length).trim();
+    const level = (number.match(/\./g) || []).length + 1;
+    return { number, cleanText, level };
   }
-  
-  return { number: null, cleanText: text.trim(), level: 0 };
+
+  // Single number prefix (e.g., 1. Mechanics)
+  const singleNumMatch = trimmed.match(/^(\d+)\s*[-.:)]\s*/);
+  if (singleNumMatch) {
+    const number = singleNumMatch[1];
+    const cleanText = trimmed.slice(singleNumMatch[0].length).trim();
+    return { number, cleanText, level: 1 };
+  }
+
+  // Capital letter prefix (e.g., A.1, A.)
+  const letterSeqMatch = trimmed.match(/^([A-Z](?:\.\d+)+)\s*[-.:)]?\s*/i);
+  if (letterSeqMatch) {
+    const number = letterSeqMatch[1];
+    const cleanText = trimmed.slice(letterSeqMatch[0].length).trim();
+    const level = (number.match(/\./g) || []).length + 1;
+    return { number, cleanText, level };
+  }
+
+  const singleLetterMatch = trimmed.match(/^([A-Z])\s*[-.:)]\s*/i);
+  if (singleLetterMatch) {
+    const number = singleLetterMatch[1];
+    const cleanText = trimmed.slice(singleLetterMatch[0].length).trim();
+    return { number, cleanText, level: 1 };
+  }
+
+  // Letter in parens: (a), (b)
+  const parenLetterMatch = trimmed.match(/^\(?([a-z])\)\s*/i);
+  if (parenLetterMatch) {
+    const number = parenLetterMatch[1];
+    const cleanText = trimmed.slice(parenLetterMatch[0].length).trim();
+    return { number, cleanText, level: 2 };
+  }
+
+  // Roman numerals: i, ii, iii
+  const romanMatch = trimmed.match(/^([ivxlcdm]+)\s*[-.:)]\s*/i);
+  if (romanMatch) {
+    const number = romanMatch[1];
+    const cleanText = trimmed.slice(romanMatch[0].length).trim();
+    return { number, cleanText, level: 3 };
+  }
+
+  return { number: null, cleanText: trimmed, level: 0 };
 }
 
 /**
@@ -170,7 +214,7 @@ export function isLikelyMainTopic(line: string): boolean {
  * Detect if a line is likely a subtopic
  */
 export function isLikelySubtopic(line: string): boolean {
-  return /^\d+\.\d+\s+/.test(line) || /^[a-z]\)\s+/i.test(line);
+  return /^\d+\.\d+\s+/.test(line) || /^\(?\b[a-z]\)\s+/i.test(line) || /^\([a-z]+\)\s+/i.test(line);
 }
 
 /**
@@ -185,7 +229,17 @@ export function isLikelyBullet(line: string): boolean {
     /^\d+\.\d+\.\d+\s+/,  // 1.1.1 style
   ];
   
-  return bulletIndicators.some(pattern => pattern.test(line));
+  if (bulletIndicators.some(pattern => pattern.test(line))) {
+    return true;
+  }
+
+  // Check action verb start
+  const firstWord = line.trim().split(/\s+/)[0]?.toLowerCase().replace(/[^a-z]/g, '');
+  if (firstWord && SYLLABUS_ACTION_VERBS.has(firstWord)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

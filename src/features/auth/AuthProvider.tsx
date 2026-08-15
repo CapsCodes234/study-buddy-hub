@@ -3,13 +3,16 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import { subjectQueryKeys } from '@/features/subjects/queryKeys';
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 
@@ -63,6 +66,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -115,11 +120,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setProfileError(null);
       setProfileLoading(false);
 
+      // Clear user-specific query data on logout
+      if (previousUserIdRef.current) {
+        queryClient.removeQueries({ queryKey: subjectQueryKeys.user(previousUserIdRef.current) });
+        queryClient.removeQueries({ queryKey: subjectQueryKeys.userArchived(previousUserIdRef.current) });
+        previousUserIdRef.current = null;
+      }
+
       return () => {
         active = false;
       };
     }
 
+    // Clear previous user's data when user changes
+    if (previousUserIdRef.current && previousUserIdRef.current !== userId) {
+      queryClient.removeQueries({ queryKey: subjectQueryKeys.user(previousUserIdRef.current) });
+      queryClient.removeQueries({ queryKey: subjectQueryKeys.userArchived(previousUserIdRef.current) });
+    }
+
+    previousUserIdRef.current = userId;
     setProfileLoading(true);
     setProfileError(null);
 
@@ -152,7 +171,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       active = false;
     };
-  }, [session?.user.id]);
+  }, [session?.user.id, queryClient]);
 
   const refreshProfile = useCallback(async (): Promise<Profile | null> => {
     const userId = session?.user.id;

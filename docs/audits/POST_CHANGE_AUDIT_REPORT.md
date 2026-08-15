@@ -274,7 +274,7 @@ The application is stable, correct, and safe for daily exam preparation use.
 
 ## 10. Manual QA Checklist
 
-See `MANUAL_QA_CHECKLIST.md` for detailed testing procedures.
+See `docs/qa/MANUAL_QA_CHECKLIST.md` for detailed testing procedures.
 
 ---
 
