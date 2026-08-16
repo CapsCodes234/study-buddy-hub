@@ -281,9 +281,8 @@ export function createAIProvider(
   provider: 'openrouter' | 'openai' | 'mock' = 'mock',
   apiKey?: string
 ): AIProvider {
-  if (provider === 'mock' || !apiKey) {
-    return new MockAIProvider();
-  }
-
-  return new OpenAICompatibleProvider(apiKey, provider);
+  // Real provider calls are intentionally unavailable in the browser.
+  // Always return the deterministic mock provider until a server-side
+  // implementation exists.
+  return new MockAIProvider();
 }

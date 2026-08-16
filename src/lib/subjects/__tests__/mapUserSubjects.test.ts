@@ -20,6 +20,7 @@ describe('mapUserSubjectToSubject', () => {
         deleted_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        client_operation_id: null,
         version: 1,
       },
       catalogueSubject: {
@@ -62,6 +63,7 @@ describe('mapUserSubjectToSubject', () => {
         deleted_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        client_operation_id: null,
         version: 1,
       },
       catalogueSubject: {
@@ -94,6 +96,7 @@ describe('mapUserSubjectToSubject', () => {
         deleted_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        client_operation_id: null,
         version: 1,
       },
       catalogueSubject: null,
@@ -107,6 +110,7 @@ describe('mapUserSubjectToSubject', () => {
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
         deleted_at: null,
+        client_operation_id: null,
         version: 1,
       },
     };
@@ -134,6 +138,7 @@ describe('mapUserSubjectToSubject', () => {
         deleted_at: null,
         created_at: '2024-01-01',
         updated_at: '2024-01-01',
+        client_operation_id: null,
         version: 1,
       },
       catalogueSubject: null,
@@ -162,6 +167,7 @@ describe('mapUserSubjectsToSubjects', () => {
           deleted_at: null,
           created_at: '2024-01-01',
           updated_at: '2024-01-01',
+          client_operation_id: null,
           version: 1,
         },
         catalogueSubject: {
@@ -188,6 +194,7 @@ describe('mapUserSubjectsToSubjects', () => {
           deleted_at: null,
           created_at: '2024-01-01',
           updated_at: '2024-01-01',
+          client_operation_id: null,
           version: 1,
         },
         catalogueSubject: {

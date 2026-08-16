@@ -33,6 +33,8 @@ import {
   Bell,
   Shield,
   AlertTriangle,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface SettingsProps {
