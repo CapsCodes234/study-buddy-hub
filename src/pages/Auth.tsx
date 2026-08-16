@@ -72,7 +72,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
             </h1>
             <p className="text-sm text-muted-foreground">
               {isSignUp
-                ? "Start syncing your subjects, progress and paper attempts."
+                ? "Choose your subjects and start building your personal study dashboard."
                 : "Sign in to continue to your study dashboard."}
             </p>
           </header>
