@@ -3,18 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="color-scheme" content="light dark" />
     <title>Study Buddy Hub</title>
-    <meta name="description" content="Study Buddy Hub - Your personal study tracking application" />
+    <meta
+      name="description"
+      content="Organise your AS & A Level subjects, understand your study progress, and focus on what needs attention next."
+    />
     <meta name="author" content="Study Buddy Hub" />
 
-    <!-- TODO: Update og:title to match your application name -->
     <meta property="og:title" content="Study Buddy Hub" />
-    <meta property="og:description" content="Study Buddy Hub - Your personal study tracking application" />
+    <meta
+      property="og:description"
+      content="A clearer way to organise subjects, understand study progress, and choose what to focus on next."
+    />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og-image.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#1765a3" />
+    <meta name="theme-color" content="#f6f7f9" />
+
+    <style>
+      html,
+      body,
+      #root {
+        min-height: 100%;
+        margin: 0;
+        background: #f6f7f9;
+      }
+
+      html.dark,
+      html.dark body,
+      html.dark #root {
+        background: #090e1a;
+      }
+    </style>
+
+    <script id="theme-bootstrap">
+      (() => {
+        const storageKey = "study-tracker:theme";
+        let preference = "system";
+
+        try {
+          const stored = window.localStorage.getItem(storageKey);
+          if (stored === "light" || stored === "dark" || stored === "system") {
+            preference = stored;
+          }
+        } catch {
+          preference = "system";
+        }
+
+        const systemDark =
+          typeof window.matchMedia === "function" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const resolved =
+          preference === "dark" || (preference === "system" && systemDark)
+            ? "dark"
+            : "light";
+        const root = document.documentElement;
+
+        root.classList.remove("light", "dark");
+        root.classList.add(resolved);
+        root.style.colorScheme = resolved;
+
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        themeColor?.setAttribute(
+          "content",
+          resolved === "dark" ? "#090e1a" : "#f6f7f9",
+        );
+      })();
+    </script>
 
     <link rel="icon" type="image/png" href="/favicon.png" />
   </head>

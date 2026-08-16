@@ -16,17 +16,55 @@ interface ThemeProviderContextValue {
 const STORAGE_KEY = 'study-tracker:theme';
 const MOTION_KEY = 'study-tracker:reduced-motion';
 const CONTRAST_KEY = 'study-tracker:high-contrast';
+const THEME_COLOR: Record<ResolvedTheme, string> = {
+  light: '#f6f7f9',
+  dark: '#090e1a',
+};
 
 const ThemeProviderContext = createContext<ThemeProviderContextValue | undefined>(undefined);
 
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light';
+  if (typeof window.matchMedia !== 'function') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function getSystemReducedMotion(): boolean {
   if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia !== 'function') return false;
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function getStoredTheme(defaultTheme: Theme): Theme {
+  if (typeof window === 'undefined') return defaultTheme;
+
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' || stored === 'system'
+      ? stored
+      : defaultTheme;
+  } catch {
+    return defaultTheme;
+  }
+}
+
+function getStoredBoolean(key: string, fallback: boolean): boolean {
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const stored = localStorage.getItem(key);
+    return stored === null ? fallback : stored === 'true';
+  } catch {
+    return fallback;
+  }
+}
+
+function persistPreference(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Appearance preferences remain usable for the current session.
+  }
 }
 
 interface ThemeProviderProps {
@@ -36,22 +74,15 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return defaultTheme;
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    return stored || defaultTheme;
+    return getStoredTheme(defaultTheme);
   });
 
   const [reducedMotion, setReducedMotionState] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const stored = localStorage.getItem(MOTION_KEY);
-    if (stored !== null) return stored === 'true';
-    return getSystemReducedMotion();
+    return getStoredBoolean(MOTION_KEY, getSystemReducedMotion());
   });
 
   const [highContrast, setHighContrastState] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    const stored = localStorage.getItem(CONTRAST_KEY);
-    return stored === 'true';
+    return getStoredBoolean(CONTRAST_KEY, false);
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
@@ -99,6 +130,11 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
     
     // Set color-scheme for native elements
     root.style.colorScheme = resolvedTheme;
+
+    const themeColor = document.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    );
+    themeColor?.setAttribute('content', THEME_COLOR[resolvedTheme]);
   }, [resolvedTheme, highContrast]);
 
   // Apply reduced motion
@@ -115,7 +151,12 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handleChange = (e: MediaQueryListEvent) => {
-      const storedPreference = localStorage.getItem(MOTION_KEY);
+      let storedPreference: string | null = null;
+      try {
+        storedPreference = localStorage.getItem(MOTION_KEY);
+      } catch {
+        // Follow the system preference when storage is unavailable.
+      }
       // Only update if user hasn't set a manual preference
       if (storedPreference === null) {
         setReducedMotionState(e.matches);
@@ -128,17 +169,17 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
+    persistPreference(STORAGE_KEY, newTheme);
   }, []);
 
   const setReducedMotion = useCallback((enabled: boolean) => {
     setReducedMotionState(enabled);
-    localStorage.setItem(MOTION_KEY, String(enabled));
+    persistPreference(MOTION_KEY, String(enabled));
   }, []);
 
   const setHighContrast = useCallback((enabled: boolean) => {
     setHighContrastState(enabled);
-    localStorage.setItem(CONTRAST_KEY, String(enabled));
+    persistPreference(CONTRAST_KEY, String(enabled));
   }, []);
 
   return (
