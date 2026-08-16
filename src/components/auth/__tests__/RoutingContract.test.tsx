@@ -13,6 +13,10 @@ vi.mock("@/features/auth/useAuth", () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock("@/features/auth/AuthProvider", () => ({
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock("@/pages/Index", () => ({
   default: () => <main>Authenticated application</main>,
 }));
